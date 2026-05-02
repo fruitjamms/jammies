@@ -1,0 +1,93 @@
+# jammies
+
+---
+
+## what is this
+
+desktop buddy is a tamagotchi-style companion app that floats on top of all your windows. it hatches from an egg, develops a personality based on a short quiz, and reacts to your computer activity in real time, powered by a local llm so everything stays on your machine.
+
+no two buddies are the same. same species, totally different personality depending on who's raising it.
+
+---
+
+## feats
+
+### egg 
+- app launches with a floating egg
+- egg wiggles and wobbles while you wait
+- egg cracks open and reveals your pet species 
+
+### personality quiz
+- immediately after your egg hatches, a short quiz appears before your buddy "wakes up"
+- 3–5 questions using sliders (like tomodachi life)
+- answers determine your buddy's personality out of 16 personality types (maybe organized in quadrants)
+
+### activity watching
+buddy watches what apps and processes you have open and reacts accordingly
+- reading the active window title and running process list
+
+### real-time commentary
+- buddy floats on your screen in a small frameless always-on-top window
+- speech bubble pops up with a short 1–2 line comment when triggered
+- max one unprompted comment every 5 minutes so it doesn't get annoying (?)
+- click your buddy any time to prompt an immediate reaction
+
+### local llm
+- runs entirely on your machine via ollama (?)
+- system prompt adapts over time based on your usage patterns and how you interact with your buddy
+- personality deepens the longer you use it
+
+### pixel art sprites
+- all buddies are 16×16 pixel art
+- multiple animation states per species: idle, happy, judging, sleepy, hyped
+- `image-rendering: pixelated` so they stay crisp at any size
+- each species has its own distinct design — personality is layered on top
+
+---
+
+## how it works
+
+```
+first launch → egg appears on desktop
+     ↓
+click on it x amount of times to hatch
+     ↓
+egg cracks open → species revealed
+     ↓
+personality quiz appears (3–5 questions)
+     ↓
+buddy wakes up with derived personality
+     ↓
+buddy floats on your screen
+watches your apps → generates commentary via ollama
+click system tray thingy at the top (mac) or bottom (windows) → open dashboard
+```
+
+---
+
+## privacy
+
+- active window title and process list are read to detect app context 
+  - opt in for keystrokes & file contents
+- all llm inference runs locally via ollama
+- all pet state and memory stored in a local json file
+
+---
+
+## stack
+
+- **electron**: cross-platform desktop app, floating windows, system tray
+- **html/css/canvas**: buddy rendering with pixelated scaling
+- **ollama**: local llm inference (llama 3 / mistral)
+- **node child_process**: active window + process detection
+- **local json / sqlite**: pet state and memory persistence
+
+---
+
+## open questions
+
+- [ ] how many species at launch?
+- [ ] mac-first or cross-platform from day one?
+- [ ] does the buddy evolve visually as it ages?
+- [ ] can you have multiple buddies, or just one at a time?
+- [ ] what happens if you neglect your buddy for too long?
