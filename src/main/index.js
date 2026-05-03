@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 import { getOllamaConfig, isOllamaReachable } from "./ollama.js";
+import { startTerminalCommentary } from "./commentary.js"; // commentary.js 
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -34,7 +35,10 @@ function createWindow() {
   }
 }
 
+let stopTerminalCommentary = () => {};
+
 app.whenReady().then(async () => {
+  stopTerminalCommentary = startTerminalCommentary(); // noop when commentary disabled
 
   if (is.dev) {
     // prod builds skip, just for dev logging
@@ -52,6 +56,10 @@ app.whenReady().then(async () => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on("before-quit", () => {
+  stopTerminalCommentary();
 });
 
 app.on("window-all-closed", () => {
