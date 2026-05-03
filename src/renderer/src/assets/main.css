@@ -1,0 +1,26 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: transparent;
+    overflow: hidden;
+}
+
+.buddy-container {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-app-region: drag;
+    cursor: grab;
+}
+
+.buddy-sprite {
+    font-size: 64px;
+    -webkit-app-region: no-drag;
+    user-select: none;
+}
