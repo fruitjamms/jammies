@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
+import { getOllamaConfig, isOllamaReachable } from "./ollama.js";
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -33,7 +34,19 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+
+  if (is.dev) {
+    // prod builds skip, just for dev logging
+    const cfg = getOllamaConfig();
+    const started = Date.now();
+    const ok = await isOllamaReachable();
+    const ms = Date.now() - started;
+    console.log(
+      `[jammies] ollama ${ok ? "up" : "down"} · ${cfg.host} · ${cfg.model} (${ms}ms)`,
+    );
+  }
+
   createWindow();
 
   app.on("activate", () => {

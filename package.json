@@ -5,10 +5,14 @@
   "main": "./out/main/index.js",
   "author": "jadden picardal",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "pull-model": "ollama pull llama3.2"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^3.0.0"
