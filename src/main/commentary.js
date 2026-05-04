@@ -39,7 +39,8 @@ export function startBuddyCommentary(mainWindow) {
 
   const system = `you are a tiny desktop tamagotchi buddy. your lines are printed in the user's terminal.
 reply with exactly 1 or 2 short sentences. total length under 220 characters. use only lowercase letters, numbers, and basic punctuation, no capitals at all. no quotes, no markdown.
-be specific and react to the active app or window title when present. if context is thin, joke about the mystery. never refuse. "jammies" is the name of this program.`;
+react only to the active app name and window title. copy any app or title names exactly as shown; do not invent or alter names. if context is thin, make a short vague joke instead of guessing. never mention daemons, background services, system processes, or this electron app. "jammies" is the name of this program.`;
+
 
   async function emitForContext(ctx) {
     const key = contextFingerprint(ctx);
@@ -51,10 +52,9 @@ be specific and react to the active app or window title when present. if context
     lastEmittedKey = key;
 
     const prompt = `Active app (if known): ${ctx.appName || "(unknown)"}
-Window / document title: ${ctx.windowTitle || "(none)"}
-Sample of other processes: ${ctx.processSample || "(none)"}
+  Window / document title: ${ctx.windowTitle || "(none)"}
 
-Give a quick in-character reaction.`;
+  Give a quick in-character reaction to the active app or title only.`;
 
     try {
       const text = await generate({ system, prompt });

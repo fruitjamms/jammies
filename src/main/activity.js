@@ -92,11 +92,11 @@ export async function getDesktopContext() {
 
 // stable while the same focused app (pid) or title bundle stays put
 export function contextFingerprint(ctx) {
+  const w = ctx.windowTitle || "";
   if (ctx.frontPid != null && Number.isFinite(ctx.frontPid)) {
-    return `pid:${ctx.frontPid}`;
+    return `pid:${ctx.frontPid}|${w}`;
   }
   const a = ctx.appName || "";
-  const w = ctx.windowTitle || "";
   const fallback = `${a}|${w}`;
   return fallback === "|" ? "" : fallback;
 }
