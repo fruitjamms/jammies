@@ -204,7 +204,7 @@ total length under 80 characters. use only lowercase, no capitals, no markdown, 
 
   clipboardPollTimer = setInterval(() => { void tickClipboard(); }, 1000);
 
-  return function stopBuddyCommentary() {
+  function stopBuddyCommentary() {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -213,5 +213,12 @@ total length under 80 characters. use only lowercase, no capitals, no markdown, 
     typingPollTimer = null;
     if (clipboardPollTimer) clearInterval(clipboardPollTimer);
     clipboardPollTimer = null;
+  }
+
+  return {
+    stop: stopBuddyCommentary,
+    notifyThrownLand: () => {
+      void emitThrownLandReaction();
+    },
   };
 }
