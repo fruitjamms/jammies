@@ -38,11 +38,6 @@ body,
     display: grid;
     place-items: end center;
     overflow: visible;
-    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.22));
-}
-
-.buddy.dragging {
-    filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.35));
 }
 
 .buddy-sprite-stack {
@@ -147,7 +142,7 @@ body,
 
 .buddy-commentary {
     position: absolute;
-    bottom: calc(55% + 120px);
+    bottom: calc(128px + 10px);
     left: 50%;
     transform: translateX(-50%);
     width: max-content;
@@ -158,10 +153,12 @@ body,
     color: white;
     line-height: 1.3;
     text-align: center;
+    text-wrap: balance;
     overflow-wrap: break-word;
+    word-break: normal;
     background: #000000;
     pointer-events: none;
-    z-index: 5;
+    z-index: 7;
     animation: fadeIn 0.3s ease-in;
 }
 
@@ -172,9 +169,4 @@ body,
     to {
         opacity: 1;
     }
-}
-
-.buddy[data-lane-slot="0"] .buddy-sprite-stack,
-.buddy[data-lane-slot="6"] .buddy-sprite-stack {
-    filter: none;
 }

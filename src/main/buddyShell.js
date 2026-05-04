@@ -22,6 +22,9 @@ const VEL_SCALE = 0.2;
 // before hatching
 let shellFrozen = true;
 
+// pause roaming while commentary bubble is visible
+let holdForCommentary = false;
+
 let behaviorTimer = null;
 let moveDirection = 1;
 let isDragging = false;
@@ -188,6 +191,7 @@ function nudgeBuddy() {
   const buddyWindow = getBuddyWindow();
   if (!buddyWindow || buddyWindow.isDestroyed() || shellFrozen) return;
   if (isDragging) return;
+  if (holdForCommentary) return;
 
   if (throwState) {
     stepThrow();
@@ -329,6 +333,10 @@ export function initBuddyShellIpc() {
     } catch {
 
     }
+  });
+
+  ipcMain.on("buddy-commentary-active", (_ev, active) => {
+    holdForCommentary = !!active;
   });
 
   ipcMain.on("buddy-hatched", () => {
