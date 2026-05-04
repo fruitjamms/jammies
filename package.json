@@ -12,7 +12,8 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "pull-model": "ollama pull llama3.2"
+    "pull-model": "ollama pull llama3.2",
+    "setup:ollama": "bash scripts/get-ollama.sh"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^3.0.0"

@@ -91,3 +91,23 @@ click system tray thingy at the top (mac) or bottom (windows) → open dashboard
 - [ ] does the buddy evolve visually as it ages?
 - [ ] can you have multiple buddies, or just one at a time?
 - [ ] what happens if you neglect your buddy for too long?
+
+---
+
+## ollama set up (dev)
+
+- runs the local llm used by the app. contributors can install ollama and pull the project model like so:
+
+- install ollama w/ the official installer:
+
+```bash
+npm run setup:ollama
+```
+
+- pull the model:
+
+```bash
+npm run pull-model
+```
+
+- `scripts/get-ollama.sh` runs the official installer from https://ollama.com. for distribution builds, we can package the platform specific ollama binaries into the release artifacts...
