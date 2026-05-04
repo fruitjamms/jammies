@@ -51,6 +51,10 @@ function App() {
   const spinVelRef = useRef(0);
   const lastEdgeBonkRef = useRef(null);
   const landFxTimerRef = useRef(null);
+  const pendingCommentaryRef = useRef("");
+  const commentaryClearTimerRef = useRef(null);
+  const startCommentaryRef = useRef(() => {});
+  const silenceCommentaryRef = useRef(() => {});
 
   const onBuddyHatched = useCallback(() => {
     hatchedRef.current = true;
@@ -58,16 +62,57 @@ function App() {
     window.api?.buddyHatched?.();
   }, []);
 
+  silenceCommentaryRef.current = ({ clearPending = true } = {}) => {
+    if (commentaryClearTimerRef.current != null) {
+      clearTimeout(commentaryClearTimerRef.current);
+      commentaryClearTimerRef.current = null;
+    }
+    setCommentary("");
+    if (clearPending) pendingCommentaryRef.current = "";
+  };
+
+  startCommentaryRef.current = (text) => {
+    if (commentaryClearTimerRef.current != null) {
+      clearTimeout(commentaryClearTimerRef.current);
+      commentaryClearTimerRef.current = null;
+    }
+    pendingCommentaryRef.current = "";
+    setCommentary(text);
+    commentaryClearTimerRef.current = setTimeout(() => {
+      setCommentary("");
+      commentaryClearTimerRef.current = null;
+    }, 4000);
+  };
+
   useEffect(() => {
     if (!window.api?.onCommentary) return undefined;
 
     window.api.onCommentary((text) => {
       if (!hatchedRef.current) return;
-      setCommentary(text);
-      setTimeout(() => setCommentary(""), 4000);
+      if (modeRef.current === "airborne") {
+        pendingCommentaryRef.current = text;
+        return;
+      }
+      startCommentaryRef.current(text);
     });
     return undefined;
   }, []);
+
+  useEffect(
+    () => () => {
+      if (commentaryClearTimerRef.current != null) {
+        clearTimeout(commentaryClearTimerRef.current);
+        commentaryClearTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!shellHatched || !window.api?.setCommentaryActive) return undefined;
+    window.api.setCommentaryActive(!!commentary);
+    return undefined;
+  }, [commentary, shellHatched]);
 
   useEffect(() => {
     if (!shellHatched) return undefined;
@@ -96,8 +141,19 @@ function App() {
     const unsub = window.api.onBuddyState((state) => {
       const el = buddyRootRef.current;
       if (!el) return;
-      const changed = state.mode !== modeRef.current;
+      const was = modeRef.current;
+      const changed = state.mode !== was;
       modeRef.current = state.mode;
+
+      if (state.mode === "airborne" && was !== "airborne") {
+        silenceCommentaryRef.current({ clearPending: false });
+      }
+
+      if (was === "airborne" && state.mode === "roaming") {
+        const queued = pendingCommentaryRef.current;
+        pendingCommentaryRef.current = "";
+        if (queued) startCommentaryRef.current(queued);
+      }
 
       el.classList.toggle("roaming", state.mode === "roaming");
       el.classList.toggle("airborne", state.mode === "airborne");
@@ -259,6 +315,7 @@ function App() {
 
     const onDown = (event) => {
       if (event.button !== 0) return;
+      silenceCommentaryRef.current();
       dragPointerId.current = event.pointerId;
       hb.setPointerCapture(event.pointerId);
       buddyRootRef.current?.classList.remove("fx-air");

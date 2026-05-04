@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
   onCommentary: (callback) => ipcRenderer.on("commentary", (event, text) => callback(text)),
+  setCommentaryActive: (active) => ipcRenderer.send("buddy-commentary-active", !!active),
   setIgnoreMouse: (ignore) => ipcRenderer.send("set-ignore-mouse", !!ignore),
   sendDragStart: (payload) => ipcRenderer.send("drag-start", payload),
   sendDragging: (payload) => ipcRenderer.send("dragging", payload),
