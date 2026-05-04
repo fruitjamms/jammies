@@ -1,6 +1,7 @@
 import eggImg from "../../../assets/egg/egg.png";
 import octoImg from "../../../assets/octo/octo.png";
 import octoTalkImg from "../../../assets/octo/octo_talk.png";
+import octoBlushImg from "../../../assets/octo_blush.png";
 
 const octo = {
   egg: {
@@ -15,6 +16,7 @@ const octo = {
   states: {
     idle: { src: octoImg, frames: 2, ms: 600 },
     talking: { src: octoTalkImg, frames: 2, ms: 200 },
+    pet: { src: octoBlushImg, frames: 2, ms: 350 },
   },
 };
 

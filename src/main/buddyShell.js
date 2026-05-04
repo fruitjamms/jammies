@@ -25,6 +25,9 @@ let shellFrozen = true;
 // pause roaming while commentary bubble is visible
 let holdForCommentary = false;
 
+// pause lane walk while the user is rubbing the pet
+let holdForPetting = false;
+
 let behaviorTimer = null;
 let moveDirection = 1;
 let isDragging = false;
@@ -218,6 +221,8 @@ function nudgeBuddy() {
     return;
   }
 
+  if (holdForPetting) return;
+
   const b = buddyWindow.getBounds();
   const display = displayFor(b.x, b.y);
   const { lo: minX, hi: maxX } = hBounds(display);
@@ -342,6 +347,10 @@ export function initBuddyShellIpc() {
     holdForCommentary = !!active;
   });
 
+  ipcMain.on("buddy-petting-active", (_ev, active) => {
+    holdForPetting = !!active;
+  });
+
   ipcMain.on("buddy-hatched", () => {
     shellFrozen = false;
     const buddyWindow = getBuddyWindow();
@@ -350,6 +359,18 @@ export function initBuddyShellIpc() {
         buddyWindow.setIgnoreMouseEvents(true, { forward: true });
       } catch {
 
+      }
+    }
+
+    const bw = getBuddyWindow();
+    if (bw && !bw.isDestroyed() && !throwState) {
+      const b = bw.getBounds();
+      const cx = b.x + Math.floor(b.width / 2);
+      const cy = b.y + Math.floor(b.height / 2);
+      const display = displayFor(cx, cy);
+      const floor = laneY(display);
+      if (ok(b.y) && b.y < floor - 3) {
+        throwState = { vx: 0, vy: 0, x: b.x, y: b.y };
       }
     }
   });

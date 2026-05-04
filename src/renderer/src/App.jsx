@@ -25,6 +25,7 @@ function clamp(n, lo, hi) {
 
 function App() {
   const [commentary, setCommentary] = useState("");
+  const [petting, setPetting] = useState(false);
   const [shellHatched, setShellHatched] = useState(false);
   const hatchedRef = useRef(false);
   const buddyRootRef = useRef(null);
@@ -42,6 +43,28 @@ function App() {
   const airVelSmoothRef = useRef({ vx: 0, vy: 0 });
   const lastEdgeBonkRef = useRef(null);
   const landFxTimerRef = useRef(null);
+  const lastRubSampleRef = useRef(null);
+
+  const rubFirstMoveAtRef = useRef(null);
+
+  const rubPathAccumRef = useRef(0);
+  const rubHoverRef = useRef(false);
+  const pettingRubRef = useRef(false);
+
+  const petBlushLatchedRef = useRef(false);
+
+  const rubLeaveGraceTimerRef = useRef(null);
+
+  function buddyIsAirborne() {
+    const buddy = buddyRootRef.current;
+    return modeRef.current === "airborne" || !!buddy?.classList.contains("fx-air");
+  }
+
+  const setPettingSynced = useCallback((next) => {
+    if (pettingRubRef.current === next) return;
+    pettingRubRef.current = next;
+    setPetting(next);
+  }, []);
   const pendingCommentaryRef = useRef("");
   const commentaryClearTimerRef = useRef(null);
   const startCommentaryRef = useRef(() => {});
@@ -106,25 +129,77 @@ function App() {
   }, [commentary, shellHatched]);
 
   useEffect(() => {
+    if (!shellHatched) {
+      if (rubLeaveGraceTimerRef.current != null) {
+        clearTimeout(rubLeaveGraceTimerRef.current);
+        rubLeaveGraceTimerRef.current = null;
+      }
+      lastRubSampleRef.current = null;
+      rubFirstMoveAtRef.current = null;
+      rubPathAccumRef.current = 0;
+      rubHoverRef.current = false;
+      petBlushLatchedRef.current = false;
+      setPettingSynced(false);
+      window.api?.setPettingActive?.(false);
+      return undefined;
+    }
+    window.api?.setPettingActive?.(petting);
+    return () => {
+      window.api?.setPettingActive?.(false);
+    };
+  }, [petting, shellHatched, setPettingSynced]);
+
+  useEffect(() => {
     if (!shellHatched) return undefined;
 
-    const makeClickable = () => window.api?.setIgnoreMouse?.(false);
-    const makeClickThrough = () => {
+    const RUB_LEAVE_GRACE_MS = 180;
+
+    function cancelRubLeaveGrace() {
+      if (rubLeaveGraceTimerRef.current != null) {
+        clearTimeout(rubLeaveGraceTimerRef.current);
+        rubLeaveGraceTimerRef.current = null;
+      }
+    }
+
+    function finalizeRubPetLeave() {
+      petBlushLatchedRef.current = false;
+      setPettingSynced(false);
+      lastRubSampleRef.current = null;
+      rubFirstMoveAtRef.current = null;
+      rubPathAccumRef.current = 0;
+    }
+
+    const onEnter = () => {
+      cancelRubLeaveGrace();
+      window.api?.setIgnoreMouse?.(false);
+      rubHoverRef.current = true;
+      lastRubSampleRef.current = null;
+      rubFirstMoveAtRef.current = null;
+      rubPathAccumRef.current = 0;
+    };
+    const onLeave = () => {
       if (!draggingRef.current) window.api?.setIgnoreMouse?.(true);
+      rubHoverRef.current = false;
+      cancelRubLeaveGrace();
+      rubLeaveGraceTimerRef.current = setTimeout(() => {
+        rubLeaveGraceTimerRef.current = null;
+        finalizeRubPetLeave();
+      }, RUB_LEAVE_GRACE_MS);
     };
 
     const hb = hitboxRef.current;
     if (hb) {
-      hb.addEventListener("mouseenter", makeClickable);
-      hb.addEventListener("mouseleave", makeClickThrough);
+      hb.addEventListener("pointerenter", onEnter);
+      hb.addEventListener("pointerleave", onLeave);
     }
     return () => {
+      cancelRubLeaveGrace();
       if (hb) {
-        hb.removeEventListener("mouseenter", makeClickable);
-        hb.removeEventListener("mouseleave", makeClickThrough);
+        hb.removeEventListener("pointerenter", onEnter);
+        hb.removeEventListener("pointerleave", onLeave);
       }
     };
-  }, [shellHatched]);
+  }, [shellHatched, setPettingSynced]);
 
   useEffect(() => {
     if (!shellHatched || !window.api?.onBuddyState) return undefined;
@@ -138,6 +213,15 @@ function App() {
 
       if (state.mode === "airborne" && was !== "airborne") {
         silenceCommentaryRef.current({ clearPending: false });
+        if (rubLeaveGraceTimerRef.current != null) {
+          clearTimeout(rubLeaveGraceTimerRef.current);
+          rubLeaveGraceTimerRef.current = null;
+        }
+        petBlushLatchedRef.current = false;
+        setPettingSynced(false);
+        lastRubSampleRef.current = null;
+        rubFirstMoveAtRef.current = null;
+        rubPathAccumRef.current = 0;
       }
 
       if (was === "airborne" && state.mode === "roaming") {
@@ -172,7 +256,7 @@ function App() {
       }
     });
     return () => unsub?.();
-  }, [shellHatched]);
+  }, [shellHatched, setPettingSynced]);
 
   useEffect(() => {
     if (!shellHatched || !window.api?.onBuddyFx) return undefined;
@@ -188,6 +272,15 @@ function App() {
         spinVelRef.current = 0;
         spinDegRef.current = 0;
         spinWrapRef.current?.style.setProperty("--spin", "0deg");
+        if (rubLeaveGraceTimerRef.current != null) {
+          clearTimeout(rubLeaveGraceTimerRef.current);
+          rubLeaveGraceTimerRef.current = null;
+        }
+        petBlushLatchedRef.current = false;
+        setPettingSynced(false);
+        lastRubSampleRef.current = null;
+        rubFirstMoveAtRef.current = null;
+        rubPathAccumRef.current = 0;
       }
 
       if (fx.kind === "wall") {
@@ -232,6 +325,39 @@ function App() {
       }
     });
     return () => unsub?.();
+  }, [shellHatched, setPettingSynced]);
+
+  useEffect(() => {
+    if (!shellHatched) return undefined;
+    const hb = hitboxRef.current;
+    if (!hb) return undefined;
+
+    function onRubMove(event) {
+      if (draggingRef.current || buddyIsAirborne()) return;
+      const last = lastRubSampleRef.current;
+      let dist = 0;
+      if (last) {
+        dist = Math.hypot(event.clientX - last.x, event.clientY - last.y);
+      }
+      lastRubSampleRef.current = { x: event.clientX, y: event.clientY };
+      if (pettingRubRef.current) return;
+
+      if (dist < 0.35) return;
+
+      rubPathAccumRef.current += dist;
+      if (rubFirstMoveAtRef.current === null) rubFirstMoveAtRef.current = performance.now();
+
+      const RUB_MS = 240;
+      const RUB_PATH_IMMEDIATE_PX = 52;
+      const elapsed = performance.now() - rubFirstMoveAtRef.current;
+      if (rubPathAccumRef.current >= RUB_PATH_IMMEDIATE_PX || elapsed >= RUB_MS) {
+        petBlushLatchedRef.current = true;
+        setPettingSynced(true);
+      }
+    }
+
+    hb.addEventListener("pointermove", onRubMove);
+    return () => hb.removeEventListener("pointermove", onRubMove);
   }, [shellHatched]);
 
   useEffect(() => {
@@ -332,6 +458,15 @@ function App() {
 
     const onDown = (event) => {
       if (event.button !== 0) return;
+      if (rubLeaveGraceTimerRef.current != null) {
+        clearTimeout(rubLeaveGraceTimerRef.current);
+        rubLeaveGraceTimerRef.current = null;
+      }
+      lastRubSampleRef.current = null;
+      rubFirstMoveAtRef.current = null;
+      rubPathAccumRef.current = 0;
+      petBlushLatchedRef.current = false;
+      setPettingSynced(false);
       silenceCommentaryRef.current();
       dragPointerId.current = event.pointerId;
       hb.setPointerCapture(event.pointerId);
@@ -363,7 +498,7 @@ function App() {
       hb.removeEventListener("pointercancel", onCancel);
       hb.removeEventListener("lostpointercapture", onLost);
     };
-  }, [shellHatched]);
+  }, [shellHatched, setPettingSynced]);
 
   return (
     <div className={`buddy-shell ${shellHatched ? "buddy-shell--hatched" : "buddy-shell--egg"}`}>
@@ -371,7 +506,11 @@ function App() {
         <div ref={spriteStackRef} className="buddy-sprite-stack">
           <div className="buddy-sprite-flip">
             <div ref={spinWrapRef} className="buddy-sprite-spin">
-              <Sprite name="octo" state={commentary ? "talking" : "idle"} onHatched={onBuddyHatched} />
+              <Sprite
+                name="octo"
+                state={petting ? "pet" : commentary ? "talking" : "idle"}
+                onHatched={onBuddyHatched}
+              />
             </div>
           </div>
         </div>

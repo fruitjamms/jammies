@@ -146,7 +146,12 @@ total length under 80 characters. use only lowercase, no capitals, no markdown, 
     const text = await getFocusedText();
     if (text) console.log("[typing]", JSON.stringify(text.slice(-80)));
 
-    if (!text || text === lastText) return;
+    if (!text) {
+      lastText = "";
+      return;
+    }
+
+    if (text === lastText) return;
 
     const prev = lastText;
     lastText = text;
@@ -154,9 +159,11 @@ total length under 80 characters. use only lowercase, no capitals, no markdown, 
     const now = Date.now();
     if (now - lastTypingAt < typingCooldownMs) return;
 
-    const added = text.slice(prev.length);
-    const pressedEnter = added.includes("\n") || added.includes("\r");
-    const enoughTyped = added.trim().length >= 8;
+    const delta =
+      prev.length <= text.length && text.startsWith(prev) ? text.slice(prev.length) : text;
+    const pressedEnter = /\r|\n/.test(delta);
+
+    const enoughTyped = text.trim().length >= 8;
 
     if (!pressedEnter && !enoughTyped) return;
 

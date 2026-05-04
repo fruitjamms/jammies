@@ -109,10 +109,13 @@ function EggSprite({ eggConfig, size, onHatched }) {
 function BuddySprite({ config, state, size }) {
   const stateConfig = config.states[state] ?? config.states[Object.keys(config.states)[0]];
   const [frame, setFrame] = useState(0);
+  const prevFrameCountRef = useRef(null);
 
   useEffect(() => {
-    setFrame(0);
     const frames = stateConfig.frames;
+    const prev = prevFrameCountRef.current;
+    prevFrameCountRef.current = frames;
+    setFrame((f) => (prev != null && prev === frames ? f % frames : 0));
     const interval = setInterval(() => {
       setFrame((f) => (f + 1) % frames);
     }, stateConfig.ms);
