@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap");
+
 * {
     margin: 0;
     padding: 0;
@@ -7,11 +9,13 @@
 body {
     background: transparent;
     overflow: hidden;
+    font-family: "DotGothic16", monospace;
 }
 
 .buddy-container {
     width: 200px;
     height: 200px;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -23,4 +27,34 @@ body {
     font-size: 64px;
     -webkit-app-region: no-drag;
     user-select: none;
+}
+
+.buddy-commentary {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(170px, calc(100% - 20px));
+    padding: 0 4px;
+    font-size: 12px;
+    font-family: "DotGothic16", monospace;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    line-height: 1.3;
+    text-align: center;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    pointer-events: none;
+    -webkit-app-region: no-drag;
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }

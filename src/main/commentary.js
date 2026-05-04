@@ -1,4 +1,4 @@
-// short buddy lines to the terminal from desktop context + ollama (macos only for now)
+// short buddy lines from desktop context + ollama (macos only for now)
 
 import process, { env } from "node:process";
 import { generate } from "./ollama.js";
@@ -18,25 +18,18 @@ function cooldownMsFromEnv() {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-export function startTerminalCommentary() {
+export function startBuddyCommentary(mainWindow) {
   if (env.JAMMIES_COMMENTARY === "0" || env.JAMMIES_COMMENTARY === "false") {
     return () => {};
   }
 
   if (process.platform !== "darwin") {
-    console.log(
-      `[jammies] terminal commentary skipped (macos only for now, you are on ${process.platform})`,
-    );
     return () => {};
   }
 
   const pollMs = numEnv("JAMMIES_ACTIVITY_POLL_MS", 1500);
   const cooldownMs = cooldownMsFromEnv();
   const debounceMs = numEnv("JAMMIES_COMMENTARY_DEBOUNCE_MS", 600);
-
-  console.log(
-    `[jammies] terminal commentary on · poll ${pollMs}ms · cooldown ${cooldownMs}ms (set JAMMIES_COMMENTARY=0 to disable)`,
-  );
 
   let pollTimer = null;
   let debounceTimer = null;
@@ -65,11 +58,9 @@ Give a quick in-character reaction.`;
 
     try {
       const text = await generate({ system, prompt });
-      console.log(`[jammies][buddy] ${text.toLowerCase()}`);
+      const finalText = text.toLowerCase();
+      mainWindow?.webContents?.send("commentary", finalText);
     } catch (e) {
-      console.warn(
-        `[jammies][buddy] (ollama quiet: ${e?.message ?? e})`,
-      );
       lastEmittedKey = "";
       lastOllamaAt = 0;
     }
@@ -102,7 +93,7 @@ Give a quick in-character reaction.`;
   }, pollMs);
   void tick();
 
-  return function stopTerminalCommentary() {
+  return function stopBuddyCommentary() {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
     if (debounceTimer) clearTimeout(debounceTimer);

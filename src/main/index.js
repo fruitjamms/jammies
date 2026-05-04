@@ -1,11 +1,11 @@
 import { app, BrowserWindow } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
-import { getOllamaConfig, isOllamaReachable } from "./ollama.js";
-import { startTerminalCommentary } from "./commentary.js"; // commentary.js 
+import { startBuddyCommentary } from "./commentary.js";
 
+let mainWindow = null;
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 200,
     height: 200,
     x: 100,
@@ -35,23 +35,12 @@ function createWindow() {
   }
 }
 
-let stopTerminalCommentary = () => {};
+let stopBuddyCommentary = () => {};
 
 app.whenReady().then(async () => {
-  stopTerminalCommentary = startTerminalCommentary(); // noop when commentary disabled
-
-  if (is.dev) {
-    // prod builds skip, just for dev logging
-    const cfg = getOllamaConfig();
-    const started = Date.now();
-    const ok = await isOllamaReachable();
-    const ms = Date.now() - started;
-    console.log(
-      `[jammies] ollama ${ok ? "up" : "down"} · ${cfg.host} · ${cfg.model} (${ms}ms)`,
-    );
-  }
-
   createWindow();
+  stopBuddyCommentary = startBuddyCommentary(mainWindow);
+
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -59,7 +48,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("before-quit", () => {
-  stopTerminalCommentary();
+  stopBuddyCommentary();
 });
 
 app.on("window-all-closed", () => {
