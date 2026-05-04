@@ -6,7 +6,7 @@ function App() {
 
   useEffect(() => {
     if (!window.api?.onCommentary) return;
-    
+
     window.api.onCommentary((text) => {
       setCommentary(text);
       setTimeout(() => setCommentary(""), 4000);
@@ -15,7 +15,7 @@ function App() {
 
   return (
     <div className="buddy-container">
-      <Sprite name="egg" />
+      <Sprite name="octo" state={commentary ? "talking" : "idle"} />
       {commentary && <div className="buddy-commentary">{commentary}</div>}
     </div>
   );
