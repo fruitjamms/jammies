@@ -6,27 +6,143 @@
     box-sizing: border-box;
 }
 
-body {
-    background: transparent;
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
     overflow: hidden;
+    background: transparent;
     font-family: "DotGothic16", monospace;
 }
 
-.buddy-container {
-    width: 200px;
-    height: 200px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.buddy-shell {
+    width: 100%;
+    height: 100%;
+}
+
+.buddy-shell--egg .buddy {
     -webkit-app-region: drag;
     cursor: grab;
 }
 
-.buddy-sprite {
-    font-size: 64px;
+.buddy-shell--hatched .buddy {
     -webkit-app-region: no-drag;
-    user-select: none;
+    pointer-events: none;
+    cursor: default;
+}
+
+.buddy {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: end center;
+    overflow: visible;
+    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.22));
+}
+
+.buddy.dragging {
+    filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.35));
+}
+
+.buddy-sprite-stack {
+    position: relative;
+    margin-bottom: 14px;
+    transform-origin: 50% 100%;
+    pointer-events: none;
+}
+
+.buddy-shell--egg .buddy-sprite-stack,
+.buddy-shell--egg .buddy-sprite-flip,
+.buddy-shell--egg .buddy-sprite-spin {
+    pointer-events: auto;
+}
+
+.buddy-sprite-flip {
+    transform-origin: 50% 92%;
+}
+
+.buddy.left .buddy-sprite-flip {
+    transform: scaleX(-1);
+}
+
+.buddy-sprite-spin {
+    display: block;
+    transform: rotate(var(--spin, 0deg));
+    transform-origin: 50% 90%;
+    pointer-events: none;
+}
+
+.buddy-sprite-spin canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+
+.buddy-hitbox {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 72px;
+    height: 100px;
+    pointer-events: auto;
+    cursor: grab;
+    z-index: 6;
+}
+
+.buddy.dragging .buddy-hitbox {
+    cursor: grabbing;
+}
+
+.buddy.fx-wall {
+    animation: buddyBonkShake 0.22s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes buddyBonkShake {
+    0% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-5px);
+    }
+    50% {
+        transform: translateX(4px);
+    }
+    75% {
+        transform: translateX(-2px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.buddy-sprite-stack.fx-land {
+    animation: buddyLandSquash 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes buddyLandSquash {
+    0% {
+        transform: translateY(-2px) scale(1.06, 0.84);
+    }
+    55% {
+        transform: translateY(1px) scale(0.96, 1.04);
+    }
+    100% {
+        transform: translateY(0) scale(1, 1);
+    }
+}
+
+.buddy.fx-tap .buddy-sprite-spin {
+    animation: buddyTapSqueeze 0.12s ease-out both;
+}
+
+@keyframes buddyTapSqueeze {
+    0% {
+        transform: rotate(var(--spin, 0deg)) scale(1.04, 0.94);
+    }
+    100% {
+        transform: rotate(var(--spin, 0deg)) scale(1, 1);
+    }
 }
 
 .buddy-commentary {
@@ -46,7 +162,7 @@ body {
     overflow-wrap: anywhere;
     word-break: normal;
     pointer-events: none;
-    -webkit-app-region: no-drag;
+    z-index: 5;
     animation: fadeIn 0.3s ease-in;
 }
 
@@ -57,4 +173,9 @@ body {
     to {
         opacity: 1;
     }
+}
+
+.buddy[data-lane-slot="0"] .buddy-sprite-stack,
+.buddy[data-lane-slot="6"] .buddy-sprite-stack {
+    filter: none;
 }
