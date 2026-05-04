@@ -1,6 +1,7 @@
 // short buddy lines from desktop context + ollama (macos only for now)
 
 import process, { env } from "node:process";
+import { clipboard } from "electron";
 import { generate } from "./ollama.js";
 import { getDesktopContext, contextFingerprint, getFocusedText } from "./activity.js";
 
@@ -94,9 +95,10 @@ export function startBuddyCommentary(getWindow) {
   void tick();
 
   // typing watcher
-  const typingSystem = `you are a tiny desktop tamagotchi buddy judging the user's typing in real time.
-reply with exactly 1 short sentence. total length under 80 characters. use only lowercase, no capitals, no markdown, no quotes.
-react to the content of what they typed — be nosy, dramatic, and judgemental like a friend reading over your shoulder.`;
+  const typingSystem = `you are a tiny desktop tamagotchi buddy spying on the user's screen.
+the user is typing a message to someone else — not to you. you are reading over their shoulder without them asking.
+reply with exactly 1 short sentence reacting to what they wrote, like a nosy friend who saw something they shouldn't have.
+total length under 80 characters. use only lowercase, no capitals, no markdown, no quotes.`;
 
   let lastText = "";
   let lastTypingAt = 0;
@@ -105,28 +107,65 @@ react to the content of what they typed — be nosy, dramatic, and judgemental l
 
   async function tickTyping() {
     const text = await getFocusedText();
+    if (text) console.log("[typing]", JSON.stringify(text.slice(-80)));
+
     if (!text || text === lastText) return;
+
+    const prev = lastText;
+    lastText = text;
 
     const now = Date.now();
     if (now - lastTypingAt < typingCooldownMs) return;
 
-    // only react if enough new content was added (at least 8 new chars)
-    const added = text.slice(lastText.length).trim();
-    lastText = text;
-    if (added.length < 8) return;
+    const added = text.slice(prev.length);
+    const pressedEnter = added.includes("\n") || added.includes("\r");
+    const enoughTyped = added.trim().length >= 8;
+
+    if (!pressedEnter && !enoughTyped) return;
 
     lastTypingAt = now;
 
-    const prompt = `the user just typed this in their focused text field:\n"${text.slice(-300)}"\n\nreact to what they're writing.`;
+    const ctx = await getDesktopContext();
+    const appHint = ctx.appName ? `app: ${ctx.appName}. ` : "";
+    const prompt = `${appHint}the user is typing this message to someone else:\n"${text.slice(-300)}"\n\nreact like a nosy friend reading over their shoulder.`;
     try {
       const response = await generate({ system: typingSystem, prompt });
-      mainWindow?.webContents?.send("commentary", response.toLowerCase());
+      const win = getWindow();
+      win?.webContents?.send("commentary", response.toLowerCase());
     } catch {
       // silent fail
     }
   }
 
   typingPollTimer = setInterval(() => { void tickTyping(); }, 1000);
+
+  // clipboard watcher — catches any app including those that block AX (e.g. Discord)
+  let lastClipboard = clipboard.readText();
+  let clipboardPollTimer = null;
+
+  async function tickClipboard() {
+    const text = clipboard.readText();
+    if (!text || text === lastClipboard) return;
+    lastClipboard = text;
+    console.log("[clipboard]", JSON.stringify(text?.slice(-80)));
+
+    const now = Date.now();
+    if (now - lastTypingAt < typingCooldownMs) return;
+    lastTypingAt = now;
+
+    const ctx = await getDesktopContext();
+    const appHint = ctx.appName ? `app: ${ctx.appName}. ` : "";
+    const prompt = `${appHint}the user just copied this text, likely something they typed or are about to send:\n"${text.slice(-300)}"\n\nreact like a nosy friend reading over their shoulder.`;
+    try {
+      const response = await generate({ system: typingSystem, prompt });
+      const win = getWindow();
+      win?.webContents?.send("commentary", response.toLowerCase());
+    } catch {
+      // silent fail
+    }
+  }
+
+  clipboardPollTimer = setInterval(() => { void tickClipboard(); }, 1000);
 
   return function stopBuddyCommentary() {
     if (pollTimer) clearInterval(pollTimer);
@@ -135,5 +174,7 @@ react to the content of what they typed — be nosy, dramatic, and judgemental l
     debounceTimer = null;
     if (typingPollTimer) clearInterval(typingPollTimer);
     typingPollTimer = null;
+    if (clipboardPollTimer) clearInterval(clipboardPollTimer);
+    clipboardPollTimer = null;
   };
 }

@@ -91,25 +91,39 @@ export async function getDesktopContext() {
 }
 
 const AX_SCRIPT = `
-try {
-  var se = Application("System Events");
-  var proc = se.processes.whose({ frontmost: true })[0];
-  var el = proc.focusedUIElement();
-  var val = el.value();
-  val && val.length ? val : "";
-} catch(e) {
-  "";
-}
+tell application "System Events"
+  set frontApp to first application process whose frontmost is true
+  try
+    set focusedEl to value of attribute "AXFocusedUIElement" of frontApp
+    set elValue to value of attribute "AXValue" of focusedEl
+    return elValue
+  on error
+    return ""
+  end try
+end tell
 `.trim();
+
+// apps where AX reads are blocked or would cause feedback loops
+const BLOCKED_APPS = new Set([
+  "ghostty", "terminal", "iterm2", "iterm", "alacritty", "warp",
+  "electron", "jammies", "code", "cursor",
+]);
 
 // returns the current text value of the focused UI element, or "" if unavailable
 export async function getFocusedText() {
   if (process.platform !== "darwin") return "";
   try {
-    const { stdout } = await execFileAsync("osascript", ["-l", "JavaScript", "-e", AX_SCRIPT], {
+    const { stdout } = await execFileAsync("osascript", ["-e", AX_SCRIPT], {
       timeout: 1500,
     });
-    return stdout.trim();
+    const result = stdout.trim();
+    if (!result || result === "missing value") return "";
+
+    // get frontmost app name to check blocklist
+    const { appName } = await getDarwinForeground().catch(() => ({ appName: "" }));
+    if (BLOCKED_APPS.has(appName.toLowerCase())) return "";
+
+    return result;
   } catch {
     return "";
   }
