@@ -18,7 +18,7 @@ function cooldownMsFromEnv() {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-export function startBuddyCommentary(mainWindow) {
+export function startBuddyCommentary(getWindow) {
   if (env.JAMMIES_COMMENTARY === "0" || env.JAMMIES_COMMENTARY === "false") {
     return () => {};
   }
@@ -58,7 +58,8 @@ export function startBuddyCommentary(mainWindow) {
     try {
       const text = await generate({ system, prompt });
       const finalText = text.toLowerCase();
-      mainWindow?.webContents?.send("commentary", finalText);
+      const win = getWindow();
+      win?.webContents?.send("commentary", finalText);
     } catch (e) {
       lastEmittedKey = "";
       lastOllamaAt = 0;

@@ -112,8 +112,9 @@ function BuddySprite({ config, state, size }) {
 
   useEffect(() => {
     setFrame(0);
+    const frames = stateConfig.frames;
     const interval = setInterval(() => {
-      setFrame(f => (f + 1) % stateConfig.frames);
+      setFrame((f) => (f + 1) % frames);
     }, stateConfig.ms);
     return () => clearInterval(interval);
   }, [state, stateConfig.frames, stateConfig.ms]);
@@ -121,9 +122,14 @@ function BuddySprite({ config, state, size }) {
   return <SpriteCanvas src={stateConfig.src} frameIndex={frame} size={size} />;
 }
 
-function Sprite({ name, size = 128, state = "idle", skipEgg = false }) {
+function Sprite({ name, size = 128, state = "idle", skipEgg = false, onHatched }) {
   const config = buddies[name];
   const [hatched, setHatched] = useState(!config?.egg || skipEgg);
+
+  useEffect(() => {
+    if (!hatched || !config) return;
+    onHatched?.();
+  }, [hatched, onHatched, config]);
 
   if (!config) return null;
 
