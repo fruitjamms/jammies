@@ -4,6 +4,7 @@ import { is } from "@electron-toolkit/utils";
 import { startBuddyCommentary } from "./commentary.js";
 import {
   configureBuddyWindowGetter,
+  configureThrownLandCommentary,
   initBuddyShellIpc,
   initialBuddyLanePosition,
   stopBuddyShell,
@@ -59,9 +60,11 @@ let stopBuddyCommentary = () => {};
 
 app.whenReady().then(async () => {
   configureBuddyWindowGetter(() => mainWindow);
+  const commentary = startBuddyCommentary(() => mainWindow);
+  configureThrownLandCommentary(commentary.notifyThrownLand);
+  stopBuddyCommentary = commentary.stop;
   initBuddyShellIpc();
   createWindow();
-  stopBuddyCommentary = startBuddyCommentary(() => mainWindow);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

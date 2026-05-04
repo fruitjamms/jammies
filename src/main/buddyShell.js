@@ -11,10 +11,10 @@ const BOTTOM_MARGIN = 4;
 const WALK_SPEED = 1;
 const TICK_MS = 17;
 
-const GRAVITY = 0.62;
-const WALL_BOUNCE = 0.68;
-const FLOOR_BOUNCE = 0.32;
-const AIR_DRAG = 0.992;
+const GRAVITY = 0.56;
+const WALL_BOUNCE = 0.74;
+const FLOOR_BOUNCE = 0.36;
+const AIR_DRAG = 0.9945;
 const GROUND_DRAG = 0.86;
 const MAX_THROW_VEL = 26;
 const VEL_SCALE = 0.2;
@@ -32,8 +32,14 @@ let dragOffset = { x: 0, y: 0 };
 const dragSamples = [];
 let throwState = null;
 
+let notifyThrownLandCommentary = () => {};
+
 export function configureBuddyWindowGetter(fn) {
   getBuddyWindow = fn;
+}
+
+export function configureThrownLandCommentary(fn) {
+  notifyThrownLandCommentary = typeof fn === "function" ? fn : () => {};
 }
 
 function ok(n) {
@@ -184,6 +190,7 @@ function stepThrow() {
     throwState = null;
     moveTo(x, floorY);
     sendFx({ kind: "land", intensity: clamp(speed / 9, 0.25, 1) });
+    notifyThrownLandCommentary();
   }
 }
 
@@ -195,21 +202,18 @@ function nudgeBuddy() {
 
   if (throwState) {
     stepThrow();
+    if (!throwState) return;
     if (!buddyWindow || buddyWindow.isDestroyed()) return;
     const b = buddyWindow.getBounds();
     const display = displayFor(b.x, b.y);
-    const facing = throwState
-      ? throwState.vx > 0
-        ? 1
-        : throwState.vx < 0
-          ? -1
-          : moveDirection
-      : moveDirection;
+    const facing = throwState.vx > 0 ? 1 : throwState.vx < 0 ? -1 : moveDirection;
     sendToRenderer("buddy-state", {
       mode: "airborne",
       direction: facing,
       airborne: true,
       laneSlot: slotIndex(display, b.x + Math.floor(b.width / 2)),
+      vx: throwState.vx,
+      vy: throwState.vy,
     });
     return;
   }
@@ -319,7 +323,6 @@ export function initBuddyShellIpc() {
     throwState = { vx: v.vx, vy: v.vy, x: b.x, y: b.y };
     sendFx({
       kind: "throw",
-      spinKick: clamp(v.vx * 0.55 + v.vy * 0.12, -22, 22),
       speed: clamp(speed / 14, 0.2, 1),
     });
   });

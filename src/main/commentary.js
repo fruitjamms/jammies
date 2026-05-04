@@ -19,13 +19,17 @@ function cooldownMsFromEnv() {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+function noopCommentary() {
+  return { stop: () => {}, notifyThrownLand: () => {} };
+}
+
 export function startBuddyCommentary(getWindow) {
   if (env.JAMMIES_COMMENTARY === "0" || env.JAMMIES_COMMENTARY === "false") {
-    return () => {};
+    return noopCommentary();
   }
 
   if (process.platform !== "darwin") {
-    return () => {};
+    return noopCommentary();
   }
 
   const pollMs = numEnv("JAMMIES_ACTIVITY_POLL_MS", 1500);
@@ -64,6 +68,39 @@ export function startBuddyCommentary(getWindow) {
     } catch (e) {
       lastEmittedKey = "";
       lastOllamaAt = 0;
+    }
+  }
+
+  let landReactionBusy = false;
+
+  async function emitThrownLandReaction() {
+    if (landReactionBusy) return;
+    const now = Date.now();
+    if (now - lastOllamaAt < cooldownMs) return;
+    const win = getWindow();
+    if (!win?.webContents || win.isDestroyed()) return;
+
+    landReactionBusy = true;
+    try {
+      const ctx = await getDesktopContext();
+      const key = contextFingerprint(ctx);
+      if (!key) return;
+
+      const landPrompt = `you were just tossed through the air and landed back on the bottom desktop lane, a little wobbly but fine.
+Active app (if known): ${ctx.appName || "(unknown)"}
+Window / document title: ${ctx.windowTitle || "(none)"}
+
+Give one quick in character line asking the user why they threw you or about it hurting, or calling the user out.`;
+
+      const text = await generate({ system, prompt: landPrompt });
+      const finalText = text.toLowerCase();
+      lastOllamaAt = Date.now();
+      lastEmittedKey = key;
+      win.webContents.send("commentary", finalText);
+    } catch {
+      /* keep lastEmittedKey so poll can retry */
+    } finally {
+      landReactionBusy = false;
     }
   }
 

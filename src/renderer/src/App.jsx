@@ -19,20 +19,8 @@ function uprightSpin(dt, spinDeg, spinVel) {
   return { spinDeg: nextDeg, spinVel: nextVel };
 }
 
-function airborneSpin(dt, spinDeg, spinVel) {
-  const t = Math.min(1, dt / 16.67);
-  let nextDeg = spinDeg + spinVel * t;
-  let nextVel = spinVel * 0.93 ** t;
-  if (Math.abs(nextVel) < 0.03) nextVel = 0;
-  const cap = 38;
-  if (nextDeg > cap) {
-    nextDeg = cap;
-    nextVel *= -0.35;
-  } else if (nextDeg < -cap) {
-    nextDeg = -cap;
-    nextVel *= -0.35;
-  }
-  return { spinDeg: nextDeg, spinVel: nextVel };
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
 }
 
 function App() {
@@ -49,6 +37,9 @@ function App() {
   const modeRef = useRef("roaming");
   const spinDegRef = useRef(0);
   const spinVelRef = useRef(0);
+  const spinBumpRef = useRef(0);
+  const airVelRef = useRef({ vx: 0, vy: 0 });
+  const airVelSmoothRef = useRef({ vx: 0, vy: 0 });
   const lastEdgeBonkRef = useRef(null);
   const landFxTimerRef = useRef(null);
   const pendingCommentaryRef = useRef("");
@@ -155,6 +146,15 @@ function App() {
         if (queued) startCommentaryRef.current(queued);
       }
 
+      if (state.mode === "airborne" && Number.isFinite(state.vx)) {
+        airVelRef.current = {
+          vx: state.vx,
+          vy: Number.isFinite(state.vy) ? state.vy : 0,
+        };
+      } else if (state.mode === "roaming") {
+        airVelRef.current = { vx: 0, vy: 0 };
+      }
+
       el.classList.toggle("roaming", state.mode === "roaming");
       el.classList.toggle("airborne", state.mode === "airborne");
       el.dataset.laneSlot = String(state.laneSlot ?? 0);
@@ -184,25 +184,26 @@ function App() {
 
       if (fx.kind === "throw") {
         buddy.classList.add("fx-air");
-        const speed = fx.speed ?? 0.5;
-        const kick = (fx.spinKick ?? 0) * (0.45 + Math.random() * 0.7);
-        const wobble = (Math.random() - 0.5) * (12 + speed * 18);
-        spinVelRef.current = kick * 0.72 + wobble;
-        spinDegRef.current = (Math.random() - 0.5) * 48;
-        spinWrapRef.current?.style.setProperty("--spin", `${spinDegRef.current.toFixed(2)}deg`);
+        spinBumpRef.current = 0;
+        spinVelRef.current = 0;
+        spinDegRef.current = 0;
+        spinWrapRef.current?.style.setProperty("--spin", "0deg");
       }
 
       if (fx.kind === "wall") {
         buddy.classList.remove("fx-wall");
         void buddy.offsetWidth;
         buddy.classList.add("fx-wall");
-        const bump = 2.8 + (fx.speed ?? 0.5) * 6;
-        spinVelRef.current +=
-          fx.side === "left" ? bump : fx.side === "right" ? -bump : (Math.random() - 0.5) * bump;
+        const bump = 1.6 + (fx.speed ?? 0.5) * 3.2;
+        if (fx.side === "left") spinBumpRef.current += bump;
+        else if (fx.side === "right") spinBumpRef.current -= bump;
+        else spinBumpRef.current += (Math.random() - 0.5) * bump * 0.4;
+        spinBumpRef.current = clamp(spinBumpRef.current, -18, 18);
       }
 
       if (fx.kind === "land") {
         buddy.classList.remove("fx-air");
+        spinBumpRef.current = 0;
         spinVelRef.current = 0;
         spinDegRef.current = 0;
         if (spriteStack) {
@@ -225,6 +226,7 @@ function App() {
       }
 
       if (fx.kind === "drop") {
+        spinBumpRef.current = 0;
         spinVelRef.current = 0;
         spinDegRef.current = 0;
       }
@@ -250,10 +252,25 @@ function App() {
 
       let { spinDeg, spinVel } = { spinDeg: spinDegRef.current, spinVel: spinVelRef.current };
       if (airborne) {
-        const o = airborneSpin(dt, spinDeg, spinVel);
-        spinDeg = o.spinDeg;
-        spinVel = o.spinVel;
+        const t = dt / 16.67;
+        spinBumpRef.current *= 0.9 ** Math.min(1, t);
+        if (Math.abs(spinBumpRef.current) < 0.08) spinBumpRef.current = 0;
+
+        const v = airVelRef.current;
+        const sm = airVelSmoothRef.current;
+        const k = Math.min(1, dt * 0.028);
+        const vxSm = sm.vx + (v.vx - sm.vx) * k;
+        const vySm = sm.vy + (v.vy - sm.vy) * k;
+        airVelSmoothRef.current = { vx: vxSm, vy: vySm };
+
+        const lean = clamp(-vxSm * 0.34, -11, 11);
+        const target = lean + spinBumpRef.current;
+        const follow = Math.min(1, dt * 0.02);
+        spinDeg += (target - spinDeg) * follow;
+        spinVel = 0;
       } else {
+        airVelSmoothRef.current = { vx: 0, vy: 0 };
+        spinBumpRef.current = 0;
         const o = uprightSpin(dt, spinDeg, spinVel);
         spinDeg = o.spinDeg;
         spinVel = o.spinVel;
@@ -319,6 +336,7 @@ function App() {
       dragPointerId.current = event.pointerId;
       hb.setPointerCapture(event.pointerId);
       buddyRootRef.current?.classList.remove("fx-air");
+      spinBumpRef.current = 0;
       spinVelRef.current = 0;
       spinDegRef.current = 0;
       spinWrapRef.current?.style.setProperty("--spin", "0deg");
