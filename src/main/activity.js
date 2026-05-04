@@ -90,6 +90,31 @@ export async function getDesktopContext() {
   };
 }
 
+const AX_SCRIPT = `
+try {
+  var se = Application("System Events");
+  var proc = se.processes.whose({ frontmost: true })[0];
+  var el = proc.focusedUIElement();
+  var val = el.value();
+  val && val.length ? val : "";
+} catch(e) {
+  "";
+}
+`.trim();
+
+// returns the current text value of the focused UI element, or "" if unavailable
+export async function getFocusedText() {
+  if (process.platform !== "darwin") return "";
+  try {
+    const { stdout } = await execFileAsync("osascript", ["-l", "JavaScript", "-e", AX_SCRIPT], {
+      timeout: 1500,
+    });
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+}
+
 // stable while the same focused app (pid) or title bundle stays put
 export function contextFingerprint(ctx) {
   const w = ctx.windowTitle || "";

@@ -2,7 +2,7 @@
 
 import process, { env } from "node:process";
 import { generate } from "./ollama.js";
-import { getDesktopContext, contextFingerprint } from "./activity.js";
+import { getDesktopContext, contextFingerprint, getFocusedText } from "./activity.js";
 
 function numEnv(name, fallback) {
   const raw = env[name];
@@ -92,10 +92,47 @@ export function startBuddyCommentary(mainWindow) {
   }, pollMs);
   void tick();
 
+  // typing watcher
+  const typingSystem = `you are a tiny desktop tamagotchi buddy judging the user's typing in real time.
+reply with exactly 1 short sentence. total length under 80 characters. use only lowercase, no capitals, no markdown, no quotes.
+react to the content of what they typed — be nosy, dramatic, and judgemental like a friend reading over your shoulder.`;
+
+  let lastText = "";
+  let lastTypingAt = 0;
+  let typingCooldownMs = numEnv("JAMMIES_TYPING_COOLDOWN_MS", 8000);
+  let typingPollTimer = null;
+
+  async function tickTyping() {
+    const text = await getFocusedText();
+    if (!text || text === lastText) return;
+
+    const now = Date.now();
+    if (now - lastTypingAt < typingCooldownMs) return;
+
+    // only react if enough new content was added (at least 8 new chars)
+    const added = text.slice(lastText.length).trim();
+    lastText = text;
+    if (added.length < 8) return;
+
+    lastTypingAt = now;
+
+    const prompt = `the user just typed this in their focused text field:\n"${text.slice(-300)}"\n\nreact to what they're writing.`;
+    try {
+      const response = await generate({ system: typingSystem, prompt });
+      mainWindow?.webContents?.send("commentary", response.toLowerCase());
+    } catch {
+      // silent fail
+    }
+  }
+
+  typingPollTimer = setInterval(() => { void tickTyping(); }, 1000);
+
   return function stopBuddyCommentary() {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = null;
+    if (typingPollTimer) clearInterval(typingPollTimer);
+    typingPollTimer = null;
   };
 }
