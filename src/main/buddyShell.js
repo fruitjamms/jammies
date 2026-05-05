@@ -1,6 +1,7 @@
 // lane roaming, drag, throw physics
 
 import { ipcMain, screen } from "electron";
+import { writeSettings } from "./settingsStore.js";
 
 let getBuddyWindow = () => null;
 
@@ -390,6 +391,11 @@ export function initBuddyShellIpc() {
 
   ipcMain.on("buddy-hatched", () => {
     shellFrozen = false;
+    try {
+      writeSettings({ buddyHatched: true });
+    } catch {
+
+    }
     const buddyWindow = getBuddyWindow();
     if (buddyWindow && !buddyWindow.isDestroyed()) {
       try {

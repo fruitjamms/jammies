@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Sprite from "./Sprite";
 
 function screenCoords(event) {
@@ -23,11 +23,25 @@ function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+function readPersistedHatched() {
+  try {
+    return window.api?.getBuddyHatchedSync?.() === true;
+  } catch {
+    return false;
+  }
+}
+
 function App() {
+  const persistedHatchedRef = useRef(null);
+  if (persistedHatchedRef.current === null) {
+    persistedHatchedRef.current = readPersistedHatched();
+  }
+  const initialHatched = persistedHatchedRef.current;
+
   const [commentary, setCommentary] = useState("");
   const [petting, setPetting] = useState(false);
-  const [shellHatched, setShellHatched] = useState(false);
-  const hatchedRef = useRef(false);
+  const [shellHatched, setShellHatched] = useState(initialHatched);
+  const hatchedRef = useRef(initialHatched);
   const buddyRootRef = useRef(null);
   const spriteStackRef = useRef(null);
   const spinWrapRef = useRef(null);
@@ -74,6 +88,18 @@ function App() {
     hatchedRef.current = true;
     setShellHatched(true);
     window.api?.buddyHatched?.();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (initialHatched) window.api?.buddyHatched?.();
+  }, []);
+
+  useEffect(() => {
+    if (!window.api?.onSystemResume) return undefined;
+    return window.api.onSystemResume(() => {
+      if (!hatchedRef.current) return;
+      window.api?.buddyHatched?.();
+    });
   }, []);
 
   silenceCommentaryRef.current = ({ clearPending = true } = {}) => {
@@ -508,6 +534,7 @@ function App() {
             <div ref={spinWrapRef} className="buddy-sprite-spin">
               <Sprite
                 name="octo"
+                skipEgg={shellHatched}
                 state={petting ? "pet" : commentary ? "talking" : "idle"}
                 onHatched={onBuddyHatched}
               />

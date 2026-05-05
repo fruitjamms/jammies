@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
+  getBuddyHatchedSync: () => ipcRenderer.sendSync("buddy-get-hatched-sync"),
+  onSystemResume: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("buddy-system-resume", handler);
+    return () => ipcRenderer.removeListener("buddy-system-resume", handler);
+  },
   onCommentary: (callback) => ipcRenderer.on("commentary", (event, text) => callback(text)),
   setCommentaryActive: (active) => ipcRenderer.send("buddy-commentary-active", !!active),
   setPettingActive: (active) => ipcRenderer.send("buddy-petting-active", !!active),

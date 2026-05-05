@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain, powerMonitor } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 import { startBuddyCommentary } from "./commentary.js";
@@ -10,6 +10,7 @@ import {
   stopBuddyShell,
   toggleStationary,
 } from "./buddyShell.js";
+import { readSettings } from "./settingsStore.js";
 
 let mainWindow = null;
 
@@ -60,6 +61,16 @@ function createWindow() {
 let stopBuddyCommentary = () => {};
 
 app.whenReady().then(async () => {
+  ipcMain.on("buddy-get-hatched-sync", (event) => {
+    event.returnValue = readSettings().buddyHatched === true;
+  });
+
+  powerMonitor.on("resume", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("buddy-system-resume");
+    }
+  });
+
   configureBuddyWindowGetter(() => mainWindow);
   const commentary = startBuddyCommentary(() => mainWindow);
   configureThrownLandCommentary(commentary.notifyThrownLand);
