@@ -86,11 +86,13 @@ export function startBuddyCommentary(getWindow) {
       const key = contextFingerprint(ctx);
       if (!key) return;
 
-      const landPrompt = `you were just tossed through the air and landed back on the bottom desktop lane, a little wobbly but fine.
+      const landPrompt = `you were just tossed through the air and landed back on the bottom
+desktop lane, a little wobbly but fine.
 Active app (if known): ${ctx.appName || "(unknown)"}
 Window / document title: ${ctx.windowTitle || "(none)"}
 
-Give one quick in character line asking the user why they threw you or about it hurting, or calling the user out.`;
+give one quick in-character line. total length under 80 characters. ask why they
+threw you, that it hurt, or call them out.`;
 
       const text = await generate({ system, prompt: landPrompt });
       const finalText = text.toLowerCase();

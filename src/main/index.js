@@ -11,6 +11,7 @@ import {
   toggleStationary,
 } from "./buddyShell.js";
 import { readSettings } from "./settingsStore.js";
+import { BUDDY_WINDOW_WIDTH, BUDDY_WINDOW_HEIGHT } from "../shared/buddyLayout.js";
 
 let mainWindow = null;
 
@@ -18,8 +19,8 @@ function createWindow() {
   const { x, y } = initialBuddyLanePosition();
 
   mainWindow = new BrowserWindow({
-    width: 200,
-    height: 200,
+    width: BUDDY_WINDOW_WIDTH,
+    height: BUDDY_WINDOW_HEIGHT,
     x,
     y,
     show: false,

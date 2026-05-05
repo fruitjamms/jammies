@@ -2,12 +2,13 @@
 
 import { ipcMain, screen } from "electron";
 import { writeSettings } from "./settingsStore.js";
+import { BUDDY_SPRITE_SIZE, BUDDY_WINDOW_WIDTH, BUDDY_WINDOW_HEIGHT } from "../shared/buddyLayout.js";
 
 let getBuddyWindow = () => null;
 
-const WIN_W = 200;
-const WIN_H = 200;
-const SPRITE_W = 128;
+const WIN_W = BUDDY_WINDOW_WIDTH;
+const WIN_H = BUDDY_WINDOW_HEIGHT;
+const SPRITE_W = BUDDY_SPRITE_SIZE;
 const BOTTOM_MARGIN = 4;
 const WALK_SPEED = 1;
 const TICK_MS = 17;

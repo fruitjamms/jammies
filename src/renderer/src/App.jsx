@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Sprite from "./Sprite";
+import { BUDDY_SPRITE_SIZE } from "../../shared/buddyLayout.js";
 
 function screenCoords(event) {
   let x = event.screenX;
@@ -79,7 +80,6 @@ function App() {
     pettingRubRef.current = next;
     setPetting(next);
   }, []);
-  const pendingCommentaryRef = useRef("");
   const commentaryClearTimerRef = useRef(null);
   const startCommentaryRef = useRef(() => {});
   const silenceCommentaryRef = useRef(() => {});
@@ -102,13 +102,12 @@ function App() {
     });
   }, []);
 
-  silenceCommentaryRef.current = ({ clearPending = true } = {}) => {
+  silenceCommentaryRef.current = () => {
     if (commentaryClearTimerRef.current != null) {
       clearTimeout(commentaryClearTimerRef.current);
       commentaryClearTimerRef.current = null;
     }
     setCommentary("");
-    if (clearPending) pendingCommentaryRef.current = "";
   };
 
   startCommentaryRef.current = (text) => {
@@ -116,7 +115,6 @@ function App() {
       clearTimeout(commentaryClearTimerRef.current);
       commentaryClearTimerRef.current = null;
     }
-    pendingCommentaryRef.current = "";
     setCommentary(text);
     commentaryClearTimerRef.current = setTimeout(() => {
       setCommentary("");
@@ -129,10 +127,7 @@ function App() {
 
     window.api.onCommentary((text) => {
       if (!hatchedRef.current) return;
-      if (modeRef.current === "airborne") {
-        pendingCommentaryRef.current = text;
-        return;
-      }
+      if (modeRef.current === "airborne") return;
       startCommentaryRef.current(text);
     });
     return undefined;
@@ -238,7 +233,7 @@ function App() {
       modeRef.current = state.mode;
 
       if (state.mode === "airborne" && was !== "airborne") {
-        silenceCommentaryRef.current({ clearPending: false });
+        silenceCommentaryRef.current();
         if (rubLeaveGraceTimerRef.current != null) {
           clearTimeout(rubLeaveGraceTimerRef.current);
           rubLeaveGraceTimerRef.current = null;
@@ -248,12 +243,6 @@ function App() {
         lastRubSampleRef.current = null;
         rubFirstMoveAtRef.current = null;
         rubPathAccumRef.current = 0;
-      }
-
-      if (was === "airborne" && state.mode === "roaming") {
-        const queued = pendingCommentaryRef.current;
-        pendingCommentaryRef.current = "";
-        if (queued) startCommentaryRef.current(queued);
       }
 
       if (state.mode === "airborne" && Number.isFinite(state.vx)) {
@@ -527,7 +516,10 @@ function App() {
   }, [shellHatched, setPettingSynced]);
 
   return (
-    <div className={`buddy-shell ${shellHatched ? "buddy-shell--hatched" : "buddy-shell--egg"}`}>
+    <div
+      className={`buddy-shell ${shellHatched ? "buddy-shell--hatched" : "buddy-shell--egg"}`}
+      style={{ "--buddy-sprite-px": `${BUDDY_SPRITE_SIZE}px` }}
+    >
       <div ref={buddyRootRef} className="buddy">
         <div ref={spriteStackRef} className="buddy-sprite-stack">
           <div className="buddy-sprite-flip">

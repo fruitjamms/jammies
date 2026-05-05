@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import buddies from "./buddies";
+import { BUDDY_SPRITE_SIZE } from "../../shared/buddyLayout.js";
 
 const FRAME_SIZE = 16;
 
@@ -125,7 +126,7 @@ function BuddySprite({ config, state, size }) {
   return <SpriteCanvas src={stateConfig.src} frameIndex={frame} size={size} />;
 }
 
-function Sprite({ name, size = 128, state = "idle", skipEgg = false, onHatched }) {
+function Sprite({ name, size = BUDDY_SPRITE_SIZE, state = "idle", skipEgg = false, onHatched }) {
   const config = buddies[name];
   const [hatched, setHatched] = useState(!config?.egg || skipEgg);
 
