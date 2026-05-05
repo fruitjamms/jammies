@@ -28,6 +28,9 @@ let holdForCommentary = false;
 // pause lane walk while the user is rubbing the pet
 let holdForPetting = false;
 
+// pin buddy in place — no walking, no gravity
+let stationary = false;
+
 let behaviorTimer = null;
 let moveDirection = 1;
 let isDragging = false;
@@ -203,6 +206,22 @@ function nudgeBuddy() {
   if (isDragging) return;
   if (holdForCommentary) return;
 
+  if (stationary) {
+    if (throwState) {
+      throwState = null;
+      sendFx({ kind: "land" });
+    }
+    const b = buddyWindow.getBounds();
+    const display = displayFor(b.x, b.y);
+    sendToRenderer("buddy-state", {
+      mode: "roaming",
+      direction: moveDirection,
+      airborne: false,
+      laneSlot: slotIndex(display, b.x + Math.floor(b.width / 2)),
+    });
+    return;
+  }
+
   if (throwState) {
     stepThrow();
     if (!throwState) return;
@@ -319,6 +338,11 @@ export function initBuddyShellIpc() {
     const speed = Math.hypot(v.vx, v.vy);
     const onLane = Math.abs(b.y - floor) <= 4;
 
+    if (stationary) {
+      sendFx({ kind: "drop", intensity: 0.15 });
+      return;
+    }
+
     if (onLane && speed < 1.4) {
       moveTo(b.x, floor);
       sendFx({ kind: "drop", intensity: 0.15 });
@@ -345,6 +369,19 @@ export function initBuddyShellIpc() {
 
   ipcMain.on("buddy-commentary-active", (_ev, active) => {
     holdForCommentary = !!active;
+  });
+
+  ipcMain.on("set-stationary", (_ev, value) => {
+    stationary = !!value;
+    if (!stationary) return;
+    const buddyWindow = getBuddyWindow();
+    if (!buddyWindow || buddyWindow.isDestroyed()) return;
+    throwState = null;
+    const b = buddyWindow.getBounds();
+    const display = displayFor(b.x, b.y);
+    const floor = laneY(display);
+    moveTo(b.x, floor);
+    sendFx({ kind: "land" });
   });
 
   ipcMain.on("buddy-petting-active", (_ev, active) => {
@@ -376,6 +413,19 @@ export function initBuddyShellIpc() {
   });
 
   startBehaviorLoop();
+}
+
+export function toggleStationary() {
+  stationary = !stationary;
+  if (!stationary) return;
+  const buddyWindow = getBuddyWindow();
+  if (!buddyWindow || buddyWindow.isDestroyed()) return;
+  throwState = null;
+  const b = buddyWindow.getBounds();
+  const display = displayFor(b.x, b.y);
+  const floor = laneY(display);
+  moveTo(b.x, floor);
+  sendFx({ kind: "land" });
 }
 
 export function stopBuddyShell() {

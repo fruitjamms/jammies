@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, globalShortcut } from "electron";
 import { join } from "path";
 import { is } from "@electron-toolkit/utils";
 import { startBuddyCommentary } from "./commentary.js";
@@ -8,6 +8,7 @@ import {
   initBuddyShellIpc,
   initialBuddyLanePosition,
   stopBuddyShell,
+  toggleStationary,
 } from "./buddyShell.js";
 
 let mainWindow = null;
@@ -66,12 +67,15 @@ app.whenReady().then(async () => {
   initBuddyShellIpc();
   createWindow();
 
+  globalShortcut.register("CommandOrControl+Option+Shift+S", toggleStationary);
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
 app.on("before-quit", () => {
+  globalShortcut.unregisterAll();
   stopBuddyCommentary();
   stopBuddyShell();
 });

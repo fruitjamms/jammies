@@ -82,15 +82,6 @@ click system tray thingy at the top (mac) or bottom (windows) → open dashboard
 - **node child_process**: active window + process detection
 - **local json / sqlite**: pet state and memory persistence
 
----
-
-## open questions
-
-- [ ] how many species at launch?
-- [ ] mac-first or cross-platform from day one?
-- [ ] does the buddy evolve visually as it ages?
-- [ ] can you have multiple buddies, or just one at a time?
-- [ ] what happens if you neglect your buddy for too long?
 
 ---
 
@@ -111,3 +102,14 @@ npm run pull-model
 ```
 
 - `scripts/get-ollama.sh` runs the official installer from https://ollama.com. for distribution builds, we can package the platform specific ollama binaries into the release artifacts...
+---
+
+## commands
+- pin position to screen: `Cmd` + `Opt` + `Shift` + `S`
+
+---
+
+## open questions
+
+- [ ] can you have multiple buddies, or just one at a time?
+- [ ] what happens if you neglect your buddy for too long?
