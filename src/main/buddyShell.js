@@ -1,7 +1,7 @@
 // lane roaming, drag, throw physics
 
 import { ipcMain, screen } from "electron";
-import { writeSettings } from "./settingsStore.js";
+import { readSettings, writeSettings } from "./settingsStore.js";
 import { BUDDY_SPRITE_SIZE, BUDDY_WINDOW_WIDTH, BUDDY_WINDOW_HEIGHT } from "../shared/buddyLayout.js";
 
 let getBuddyWindow = () => null;
@@ -370,7 +370,12 @@ export function initBuddyShellIpc() {
   });
 
   ipcMain.on("buddy-commentary-active", (_ev, active) => {
-    holdForCommentary = !!active;
+    try {
+      const settings = readSettings();
+      holdForCommentary = !!active && !settings.walkWhileTalking;
+    } catch {
+      holdForCommentary = !!active;
+    }
   });
 
   ipcMain.on("set-stationary", (_ev, value) => {
