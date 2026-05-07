@@ -29,3 +29,7 @@ export function writeSettings(patch) {
   writeFileSync(settingsPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
   return next;
 }
+
+export function resetToEggSettings() {
+  return writeSettings({ buddyHatched: false });
+}

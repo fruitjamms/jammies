@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Sprite from "./Sprite";
+import SettingsModal from "./SettingsModal";
 import { BUDDY_SPRITE_SIZE } from "../../shared/buddyLayout.js";
 
 function screenCoords(event) {
@@ -42,6 +43,7 @@ function App() {
   const [commentary, setCommentary] = useState("");
   const [petting, setPetting] = useState(false);
   const [shellHatched, setShellHatched] = useState(initialHatched);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const hatchedRef = useRef(initialHatched);
   const buddyRootRef = useRef(null);
   const spriteStackRef = useRef(null);
@@ -49,6 +51,7 @@ function App() {
   const hitboxRef = useRef(null);
   const dragPointerId = useRef(null);
   const draggingRef = useRef(false);
+  const settingsOpenRef = useRef(false);
 
   const modeRef = useRef("roaming");
   const spinDegRef = useRef(0);
@@ -101,6 +104,34 @@ function App() {
       window.api?.buddyHatched?.();
     });
   }, []);
+
+  useEffect(() => {
+    if (!window.api?.onSettingsMenuClick) return undefined;
+    return window.api.onSettingsMenuClick(() => {
+      setSettingsOpen(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    settingsOpenRef.current = settingsOpen;
+    if (settingsOpen) {
+      window.api?.setIgnoreMouse?.(false);
+      window.api?.setStationary?.(true);
+      return undefined;
+    }
+
+    if (!shellHatched) {
+      window.api?.setStationary?.(false);
+      window.api?.setIgnoreMouse?.(false);
+      return undefined;
+    }
+
+    window.api?.setStationary?.(false);
+    if (!draggingRef.current && !rubHoverRef.current) {
+      window.api?.setIgnoreMouse?.(true);
+    }
+    return undefined;
+  }, [settingsOpen, shellHatched]);
 
   silenceCommentaryRef.current = () => {
     if (commentaryClearTimerRef.current != null) {
@@ -199,7 +230,9 @@ function App() {
       rubPathAccumRef.current = 0;
     };
     const onLeave = () => {
-      if (!draggingRef.current) window.api?.setIgnoreMouse?.(true);
+      if (!draggingRef.current && !settingsOpenRef.current) {
+        window.api?.setIgnoreMouse?.(true);
+      }
       rubHoverRef.current = false;
       cancelRubLeaveGrace();
       rubLeaveGraceTimerRef.current = setTimeout(() => {
@@ -444,7 +477,9 @@ function App() {
       }
     }
     window.api?.sendDragEnd?.();
-    window.api?.setIgnoreMouse?.(true);
+    if (!settingsOpenRef.current && !rubHoverRef.current) {
+      window.api?.setIgnoreMouse?.(true);
+    }
   }
 
   useEffect(() => {
@@ -502,16 +537,24 @@ function App() {
       if (draggingRef.current) endDrag(e);
     };
 
+    const onContextMenu = (e) => {
+      if (!shellHatched) return;
+      e.preventDefault();
+      window.api?.showSettingsMenu?.();
+    };
+
     hb.addEventListener("pointerdown", onDown);
     hb.addEventListener("pointerup", onUp);
     hb.addEventListener("pointercancel", onCancel);
     hb.addEventListener("lostpointercapture", onLost);
+    hb.addEventListener("contextmenu", onContextMenu);
 
     return () => {
       hb.removeEventListener("pointerdown", onDown);
       hb.removeEventListener("pointerup", onUp);
       hb.removeEventListener("pointercancel", onCancel);
       hb.removeEventListener("lostpointercapture", onLost);
+      hb.removeEventListener("contextmenu", onContextMenu);
     };
   }, [shellHatched, setPettingSynced]);
 
@@ -538,6 +581,7 @@ function App() {
           <div ref={hitboxRef} className="buddy-hitbox" aria-hidden="true" />
         )}
       </div>
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

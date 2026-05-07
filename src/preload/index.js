@@ -16,6 +16,14 @@ contextBridge.exposeInMainWorld("api", {
   sendDragging: (payload) => ipcRenderer.send("dragging", payload),
   sendDragEnd: () => ipcRenderer.send("drag-end"),
   buddyHatched: () => ipcRenderer.send("buddy-hatched"),
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  updateSettings: (patch) => ipcRenderer.send("update-settings", patch),
+  resetToEgg: () => ipcRenderer.send("reset-to-egg"),
+  showSettingsMenu: () => ipcRenderer.send("show-settings-menu"),
+  onSettingsMenuClick: (callback) => {
+    ipcRenderer.on("settings-menu-click", () => callback());
+    return () => ipcRenderer.removeListener("settings-menu-click", () => callback());
+  },
   onBuddyState: (callback) => {
     const handler = (_event, state) => callback(state);
     ipcRenderer.on("buddy-state", handler);

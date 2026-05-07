@@ -1,6 +1,6 @@
 // lane roaming, drag, throw physics
 
-import { ipcMain, screen } from "electron";
+import { ipcMain, screen, Menu, MenuItem } from "electron";
 import { readSettings, writeSettings } from "./settingsStore.js";
 import { BUDDY_SPRITE_SIZE, BUDDY_WINDOW_WIDTH, BUDDY_WINDOW_HEIGHT } from "../shared/buddyLayout.js";
 
@@ -422,6 +422,56 @@ export function initBuddyShellIpc() {
         throwState = { vx: 0, vy: 0, x: b.x, y: b.y };
       }
     }
+  });
+
+  ipcMain.handle("get-settings", () => {
+    try {
+      return readSettings();
+    } catch {
+      return {};
+    }
+  });
+
+  ipcMain.on("update-settings", (_ev, patch) => {
+    try {
+      writeSettings(patch);
+    } catch {
+
+    }
+  });
+
+  ipcMain.on("reset-to-egg", () => {
+    try {
+      writeSettings({ buddyHatched: false });
+      shellFrozen = true;
+      const buddyWindow = getBuddyWindow();
+      if (buddyWindow && !buddyWindow.isDestroyed()) {
+        try {
+          buddyWindow.setIgnoreMouseEvents(false);
+        } catch {
+
+        }
+        buddyWindow.reload();
+      }
+    } catch {
+
+    }
+  });
+
+  ipcMain.on("show-settings-menu", () => {
+    const menu = new Menu();
+    menu.append(
+      new MenuItem({
+        label: "Settings",
+        click: () => {
+          const buddyWindow = getBuddyWindow();
+          if (buddyWindow && !buddyWindow.isDestroyed()) {
+            buddyWindow.webContents.send("settings-menu-click");
+          }
+        },
+      })
+    );
+    menu.popup();
   });
 
   startBehaviorLoop();

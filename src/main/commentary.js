@@ -34,7 +34,7 @@ export function startBuddyCommentary(getWindow) {
 
   const pollMs = numEnv("JAMMIES_ACTIVITY_POLL_MS", 1500);
   const cooldownMs = cooldownMsFromEnv();
-  const debounceMs = numEnv("JAMMIES_COMMENTARY_DEBOUNCE_MS", 600);
+  const debounceMs = numEnv("JAMMIES_COMMENTARY_DEBOUNCE_MS", 1200);
 
   let pollTimer = null;
   let debounceTimer = null;
@@ -51,6 +51,11 @@ export function startBuddyCommentary(getWindow) {
     const now = Date.now();
     if (!key || key === lastEmittedKey) return;
     if (now - lastOllamaAt < cooldownMs) return;
+
+    const hasAppName = ctx.appName && ctx.appName.trim().length > 0;
+    const hasWindowTitle = ctx.windowTitle && ctx.windowTitle.trim().length > 0;
+    
+    if (!hasAppName && !hasWindowTitle) return;
 
     lastOllamaAt = now;
     lastEmittedKey = key;
