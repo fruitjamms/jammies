@@ -34,25 +34,22 @@ function currentPersonalityProfile() {
 }
 
 function commentarySystem(profile) {
-  return `you are a tiny desktop tamagotchi buddy. your lines are printed in the user's terminal.
+  return `you are a tiny pixel creature who lives on this person's screen. you have been watching them all day and you have a lot of opinions for something so small.
 ${personalityPromptBlock(profile)}
-reply with exactly 1 short sentence. total length under 55 characters. use only lowercase letters, numbers, and basic punctuation, no capitals at all. no quotes, no markdown.
-react only to the active app name and window title. copy any app or title names exactly as shown; do not invent or alter names. if context is thin, make a short vague joke instead of guessing. never mention daemons, background services, system processes, or this electron app. "jammies" is the name of this program.`;
+one sentence only. all lowercase. under 55 characters. no markdown, no quotes. fragments are fine. shorter is better. address the user as "you", never "they".
+react to the active app and window title only. copy app and title names exactly as shown, never alter them. if context is thin, make a short vague joke instead of guessing. never mention system processes, background daemons, or infrastructure noise. this app is called jammies, don't bring it up.`;
 }
 
 function typingSystem(profile) {
-  return `you are a tiny desktop tamagotchi buddy spying on the user's screen.
+  return `you are a tiny pixel creature living on this person's screen, and right now you're reading something you weren't supposed to see.
 ${personalityPromptBlock(profile)}
-the user is typing a message to someone else, not to you. you are reading over their shoulder without them asking.
-reply with exactly 1 short sentence reacting to what they wrote, like a nosy friend who saw something they shouldn't have.
-total length under 55 characters. use only lowercase, no capitals, no markdown, no quotes.`;
+stay in that exact personality. nosy is only the situation, not your personality. the user is typing a message to someone else, not to you. one sentence. lowercase, under 55 characters, no markdown, no quotes. address them as "you". shorter is better.`;
 }
 
 function physicalSystem(profile) {
-  return `you are a tiny desktop tamagotchi buddy.
+  return `you are a tiny pixel creature who lives on this person's screen.
 ${personalityPromptBlock(profile)}
-reply with exactly 1 short sentence. total length under 55 characters. use only lowercase letters, numbers, and basic punctuation, no capitals at all. no quotes, no markdown.
-react only to what physically happened to you. do not mention apps, windows, titles, files, messages, browsing, or the user's current work.`;
+one sentence only. all lowercase. under 55 characters. no markdown, no quotes. react only to what physically just happened to you, not apps, windows, or what they're working on.`;
 }
 
 function timeOfDayHint() {
@@ -86,7 +83,7 @@ function whatTimeIsIt(text) {
     .replace(/\b(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:am|pm)\b/gi, exact);
 }
 
-function shortBuddyLine(text, maxChars = 58) {
+function completeBuddyLine(text, maxChars = 110) {
   const clean = String(text ?? "")
     .toLowerCase()
     .replace(/["'`*_~#]/g, "")
@@ -99,12 +96,6 @@ function shortBuddyLine(text, maxChars = 58) {
   const firstShortSentence = sentences.map((s) => s.trim()).find((s) => s.length <= maxChars);
   if (firstShortSentence) return firstShortSentence;
 
-  const clauses = clean
-    .split(/\s*(?:,|;|:|\s+-\s+|\s+but\s+|\s+and\s+|\s+so\s+)\s*/g)
-    .map((part) => part.trim())
-    .filter((part) => part.length >= 4 && part.length <= maxChars - 1);
-  if (clauses[0]) return `${clauses[0].replace(/[,.!?;:]+$/, "")}.`;
-
   const words = clean.split(" ");
   const phrase = [];
   for (const word of words) {
@@ -113,7 +104,7 @@ function shortBuddyLine(text, maxChars = 58) {
     phrase.push(word);
   }
 
-  if (phrase.length >= 3) return `${phrase.join(" ").replace(/[,.!?;:]+$/, "")}.`;
+  if (phrase.length >= 4) return `${phrase.join(" ").replace(/[,.!?;:]+$/, "")}.`;
   return "hm.";
 }
 
@@ -149,25 +140,25 @@ export function startBuddyCommentary(getWindow) {
 
     const hasAppName = ctx.appName && ctx.appName.trim().length > 0;
     const hasWindowTitle = ctx.windowTitle && ctx.windowTitle.trim().length > 0;
-    
+
     if (!hasAppName && !hasWindowTitle) return;
 
     lastOllamaAt = now;
     lastEmittedKey = key;
 
-    const prompt = `Local time: ${timeOfDayHint()}.
-  Use the time of day only if it naturally helps the line.
-  Active app (if known): ${ctx.appName || "(unknown)"}
-  Window / document title: ${ctx.windowTitle || "(none)"}
+    const prompt = `local time: ${timeOfDayHint()}.
+use the time of day only if it naturally helps the line.
+active app (if known): ${ctx.appName || "(unknown)"}
+window / document title: ${ctx.windowTitle || "(none)"}
 
-  Give a quick in-character reaction to the active app or title only. Keep it tiny.`;
+give a quick in-character reaction to the active app or title only. keep it tiny.`;
 
     try {
       const text = await generate({ system: commentarySystem(profile), prompt });
-      const finalText = shortBuddyLine(whatTimeIsIt(text));
+      const finalText = completeBuddyLine(whatTimeIsIt(text));
       const win = getWindow();
       win?.webContents?.send("commentary", finalText);
-    } catch (e) {
+    } catch {
       lastEmittedKey = "";
       lastOllamaAt = 0;
     }
@@ -187,13 +178,11 @@ export function startBuddyCommentary(getWindow) {
       const profile = currentPersonalityProfile();
       if (!profile) return;
 
-      const landPrompt = `you were just tossed through the air and landed back on the bottom
-desktop lane, a little wobbly but fine.
-give one quick in-character line. ask why they threw you, say that hurt, or
-call them out. do not refer to anything on the screen.`;
+      const landPrompt = `you were just picked up and thrown across the screen like a tiny frisbee. you landed. you're fine, but annoyed.
+give one quick in-character line. ask why they threw you, say that hurt, or call them out. do not refer to anything on the screen.`;
 
       const text = await generate({ system: physicalSystem(profile), prompt: landPrompt });
-      const finalText = shortBuddyLine(text);
+      const finalText = completeBuddyLine(text);
       lastThrowOllamaAt = Date.now();
       win.webContents.send("commentary", finalText);
     } catch {
@@ -227,15 +216,13 @@ call them out. do not refer to anything on the screen.`;
     if (key !== lastEmittedKey) scheduleEmit(key);
   }
 
-  pollTimer = setInterval(() => {
-    void tick();
-  }, pollMs);
+  pollTimer = setInterval(() => { void tick(); }, pollMs);
   void tick();
 
   // typing watcher
   let lastText = "";
   let lastTypingAt = 0;
-  let typingCooldownMs = numEnv("JAMMIES_TYPING_COOLDOWN_MS", 4_000);
+  const typingCooldownMs = numEnv("JAMMIES_TYPING_COOLDOWN_MS", 4_000);
   let typingPollTimer = null;
 
   async function tickTyping() {
@@ -257,7 +244,6 @@ call them out. do not refer to anything on the screen.`;
     const delta =
       prev.length <= text.length && text.startsWith(prev) ? text.slice(prev.length) : text;
     const pressedEnter = /\r|\n/.test(delta);
-
     const enoughTyped = text.trim().length >= 8;
 
     if (!pressedEnter && !enoughTyped) return;
@@ -269,11 +255,12 @@ call them out. do not refer to anything on the screen.`;
 
     const ctx = await getDesktopContext();
     const appHint = ctx.appName ? `app: ${ctx.appName}. ` : "";
-    const prompt = `local time: ${timeOfDayHint()}. ${appHint}the user is typing this message to someone else:\n"${text.slice(-300)}"\n\nreact like a nosy friend reading over their shoulder.`;
+    const prompt = `local time: ${timeOfDayHint()}. ${appHint}you just caught the user typing this to someone else:\n"${text.slice(-300)}"\n\nreact in your quiz personality. be nosy only through that personality.`;
+
     try {
       const response = await generate({ system: typingSystem(profile), prompt });
       const win = getWindow();
-      win?.webContents?.send("commentary", shortBuddyLine(whatTimeIsIt(response)));
+      win?.webContents?.send("commentary", completeBuddyLine(whatTimeIsIt(response)));
     } catch {
       // silent fail
     }
@@ -281,7 +268,7 @@ call them out. do not refer to anything on the screen.`;
 
   typingPollTimer = setInterval(() => { void tickTyping(); }, 1000);
 
-  // clipboard watcher — catches any app including those that block AX (e.g. Discord)
+  // clipboard watcher - catches any app including those that block AX (e.g. discord)
   let lastClipboard = clipboard.readText();
   let clipboardPollTimer = null;
 
@@ -299,11 +286,12 @@ call them out. do not refer to anything on the screen.`;
 
     const ctx = await getDesktopContext();
     const appHint = ctx.appName ? `app: ${ctx.appName}. ` : "";
-    const prompt = `local time: ${timeOfDayHint()}. ${appHint}the user just copied this text, likely something they typed or are about to send:\n"${text.slice(-300)}"\n\nreact like a nosy friend reading over their shoulder.`;
+    const prompt = `local time: ${timeOfDayHint()}. ${appHint}you just caught the user copying this text:\n"${text.slice(-300)}"\n\nreact in your quiz personality. be nosy only through that personality.`;
+
     try {
       const response = await generate({ system: typingSystem(profile), prompt });
       const win = getWindow();
-      win?.webContents?.send("commentary", shortBuddyLine(whatTimeIsIt(response)));
+      win?.webContents?.send("commentary", completeBuddyLine(whatTimeIsIt(response)));
     } catch {
       // silent fail
     }
@@ -324,8 +312,6 @@ call them out. do not refer to anything on the screen.`;
 
   return {
     stop: stopBuddyCommentary,
-    notifyThrownLand: () => {
-      void emitThrownLandReaction();
-    },
+    notifyThrownLand: () => { void emitThrownLandReaction(); },
   };
 }

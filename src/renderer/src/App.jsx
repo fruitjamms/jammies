@@ -220,10 +220,11 @@ function App() {
       commentaryClearTimerRef.current = null;
     }
     setCommentary(text);
+    const visibleMs = Math.max(4200, Math.min(8200, 2200 + String(text ?? "").length * 55));
     commentaryClearTimerRef.current = setTimeout(() => {
       setCommentary("");
       commentaryClearTimerRef.current = null;
-    }, 4000);
+    }, visibleMs);
   };
 
   useEffect(() => {

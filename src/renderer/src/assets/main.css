@@ -157,7 +157,7 @@ body,
     left: 50%;
     transform: translateX(-50%);
     width: max-content;
-    max-width: min(170px, calc(100% - 20px));
+    max-width: min(190px, calc(100% - 20px));
     padding: 4px 8px;
     font-size: 12px;
     font-family: "DotGothic16", monospace;
