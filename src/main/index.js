@@ -48,6 +48,11 @@ function createWindow() {
     mainWindow.setAlwaysOnTop(true, "screen-saver");
   });
 
+  mainWindow.on("blur", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send("buddy-window-blur");
+  });
+
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
@@ -64,6 +69,10 @@ let stopBuddyCommentary = () => {};
 app.whenReady().then(async () => {
   ipcMain.on("buddy-get-hatched-sync", (event) => {
     event.returnValue = readSettings().buddyHatched === true;
+  });
+
+  ipcMain.on("buddy-get-settings-sync", (event) => {
+    event.returnValue = readSettings();
   });
 
   powerMonitor.on("resume", () => {

@@ -1,6 +1,6 @@
 // lane roaming, drag, throw physics
 
-import { ipcMain, screen, Menu, MenuItem } from "electron";
+import { ipcMain, screen } from "electron";
 import { readSettings, writeSettings } from "./settingsStore.js";
 import { BUDDY_SPRITE_SIZE, BUDDY_WINDOW_WIDTH, BUDDY_WINDOW_HEIGHT } from "../shared/buddyLayout.js";
 
@@ -12,6 +12,9 @@ const SPRITE_W = BUDDY_SPRITE_SIZE;
 const BOTTOM_MARGIN = 4;
 const WALK_SPEED = 1;
 const TICK_MS = 17;
+const PANEL_W = 300;
+const PANEL_H = 340;
+const EDGE_PAUSE_MS = 650;
 
 const GRAVITY = 0.56;
 const WALL_BOUNCE = 0.74;
@@ -32,9 +35,12 @@ let holdForPetting = false;
 
 // pin buddy in place — no walking, no gravity
 let stationary = false;
+let panelOpen = false;
+let panelBoundsBeforeOpen = null;
 
 let behaviorTimer = null;
 let moveDirection = 1;
+let edgePauseUntil = 0;
 let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
 const dragSamples = [];
@@ -84,6 +90,63 @@ function resizeTo(x, y, w, h) {
   if (ix == null || iy == null) return;
   try {
     buddyWindow.setBounds({ x: ix, y: iy, width: w, height: h });
+  } catch {
+
+  }
+}
+
+function fitBoundsInWorkArea(bounds, display) {
+  const wa = display.workArea;
+  const width = Math.min(bounds.width, wa.width);
+  const height = Math.min(bounds.height, wa.height);
+  return {
+    x: clamp(bounds.x, wa.x, wa.x + wa.width - width),
+    y: clamp(bounds.y, wa.y, wa.y + wa.height - height),
+    width,
+    height,
+  };
+}
+
+function setPanelActive(active) {
+  const buddyWindow = getBuddyWindow();
+  if (!buddyWindow || buddyWindow.isDestroyed()) return;
+  panelOpen = !!active;
+
+  if (active) {
+    if (!panelBoundsBeforeOpen) panelBoundsBeforeOpen = buddyWindow.getBounds();
+    const b = panelBoundsBeforeOpen;
+    const display = displayFor(b.x + Math.floor(b.width / 2), b.y + Math.floor(b.height / 2));
+    const next = fitBoundsInWorkArea(
+      {
+        x: b.x + Math.floor(b.width / 2) - Math.floor(PANEL_W / 2),
+        y: b.y + b.height - PANEL_H,
+        width: PANEL_W,
+        height: PANEL_H,
+      },
+      display,
+    );
+    const anchor = {
+      x: b.x + Math.floor(b.width / 2) - next.x,
+      bottom: next.y + next.height - (b.y + b.height),
+    };
+    try {
+      buddyWindow.setBounds(next);
+      buddyWindow.setIgnoreMouseEvents(false);
+      buddyWindow.moveTop();
+      buddyWindow.focus();
+      sendToRenderer("buddy-panel-layout", anchor);
+    } catch {
+
+    }
+    return;
+  }
+
+  if (!panelBoundsBeforeOpen) return;
+  const restore = panelBoundsBeforeOpen;
+  panelBoundsBeforeOpen = null;
+  try {
+    buddyWindow.setBounds(restore);
+    sendToRenderer("buddy-panel-layout", null);
   } catch {
 
   }
@@ -206,7 +269,7 @@ function nudgeBuddy() {
   const buddyWindow = getBuddyWindow();
   if (!buddyWindow || buddyWindow.isDestroyed() || shellFrozen) return;
   if (isDragging) return;
-  if (holdForCommentary) return;
+  if (panelOpen) return;
 
   if (stationary) {
     if (throwState) {
@@ -242,6 +305,7 @@ function nudgeBuddy() {
     return;
   }
 
+  if (holdForCommentary) return;
   if (holdForPetting) return;
 
   const b = buddyWindow.getBounds();
@@ -250,17 +314,26 @@ function nudgeBuddy() {
   const floor = laneY(display);
 
   let nextX = b.x;
-  let wallBonk = null;
+  const now = Date.now();
+  if (now < edgePauseUntil) {
+    sendToRenderer("buddy-state", {
+      mode: "roaming",
+      direction: moveDirection,
+      airborne: false,
+      laneSlot: slotIndex(display, b.x + Math.floor(b.width / 2)),
+    });
+    return;
+  }
 
   nextX += WALK_SPEED * moveDirection;
   if (nextX <= minX) {
     nextX = minX;
     moveDirection = 1;
-    wallBonk = "left";
+    edgePauseUntil = now + EDGE_PAUSE_MS;
   } else if (nextX >= maxX) {
     nextX = maxX;
     moveDirection = -1;
-    wallBonk = "right";
+    edgePauseUntil = now + EDGE_PAUSE_MS;
   }
   nextX = clamp(nextX, minX, maxX);
 
@@ -271,7 +344,6 @@ function nudgeBuddy() {
     direction: moveDirection,
     airborne: false,
     laneSlot: slotIndex(display, nextX + Math.floor(b.width / 2)),
-    edgeBonk: wallBonk,
   });
 }
 
@@ -362,7 +434,11 @@ export function initBuddyShellIpc() {
     const buddyWindow = getBuddyWindow();
     if (!buddyWindow || buddyWindow.isDestroyed()) return;
     try {
-      if (ignore) buddyWindow.setIgnoreMouseEvents(true, { forward: true });
+      if (ignore && panelOpen) {
+        buddyWindow.setIgnoreMouseEvents(false);
+      } else if (ignore) {
+        buddyWindow.setIgnoreMouseEvents(true, { forward: true });
+      }
       else buddyWindow.setIgnoreMouseEvents(false);
     } catch {
 
@@ -380,7 +456,7 @@ export function initBuddyShellIpc() {
 
   ipcMain.on("set-stationary", (_ev, value) => {
     stationary = !!value;
-    if (!stationary) return;
+    if (!stationary || panelOpen) return;
     const buddyWindow = getBuddyWindow();
     if (!buddyWindow || buddyWindow.isDestroyed()) return;
     throwState = null;
@@ -389,6 +465,10 @@ export function initBuddyShellIpc() {
     const floor = laneY(display);
     moveTo(b.x, floor);
     sendFx({ kind: "land" });
+  });
+
+  ipcMain.on("buddy-panel-active", (_ev, active) => {
+    setPanelActive(!!active);
   });
 
   ipcMain.on("buddy-petting-active", (_ev, active) => {
@@ -405,23 +485,14 @@ export function initBuddyShellIpc() {
     const buddyWindow = getBuddyWindow();
     if (buddyWindow && !buddyWindow.isDestroyed()) {
       try {
-        buddyWindow.setIgnoreMouseEvents(true, { forward: true });
+        if (panelOpen) buddyWindow.setIgnoreMouseEvents(false);
+        else buddyWindow.setIgnoreMouseEvents(true, { forward: true });
       } catch {
 
       }
     }
 
-    const bw = getBuddyWindow();
-    if (bw && !bw.isDestroyed() && !throwState) {
-      const b = bw.getBounds();
-      const cx = b.x + Math.floor(b.width / 2);
-      const cy = b.y + Math.floor(b.height / 2);
-      const display = displayFor(cx, cy);
-      const floor = laneY(display);
-      if (ok(b.y) && b.y < floor - 3) {
-        throwState = { vx: 0, vy: 0, x: b.x, y: b.y };
-      }
-    }
+    throwState = null;
   });
 
   ipcMain.handle("get-settings", () => {
@@ -442,7 +513,8 @@ export function initBuddyShellIpc() {
 
   ipcMain.on("reset-to-egg", () => {
     try {
-      writeSettings({ buddyHatched: false });
+      setPanelActive(false);
+      writeSettings({ buddyHatched: false, personalityAnswers: null, personalityProfile: null });
       shellFrozen = true;
       const buddyWindow = getBuddyWindow();
       if (buddyWindow && !buddyWindow.isDestroyed()) {
@@ -458,20 +530,12 @@ export function initBuddyShellIpc() {
     }
   });
 
-  ipcMain.on("show-settings-menu", () => {
-    const menu = new Menu();
-    menu.append(
-      new MenuItem({
-        label: "Settings",
-        click: () => {
-          const buddyWindow = getBuddyWindow();
-          if (buddyWindow && !buddyWindow.isDestroyed()) {
-            buddyWindow.webContents.send("settings-menu-click");
-          }
-        },
-      })
-    );
-    menu.popup();
+  ipcMain.on("open-settings", () => {
+    const buddyWindow = getBuddyWindow();
+    if (buddyWindow && !buddyWindow.isDestroyed()) {
+      setPanelActive(true);
+      buddyWindow.webContents.send("settings-menu-click");
+    }
   });
 
   startBehaviorLoop();

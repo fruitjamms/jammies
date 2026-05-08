@@ -16,9 +16,10 @@
   background: #000000;
   border: 1px solid #333;
   border-radius: 0;
-  padding: 12px 14px;
-  max-width: 260px;
-  min-width: 200px;
+  padding: 10px 12px;
+  width: min(272px, calc(100% - 14px));
+  max-height: calc(100% - 14px);
+  overflow: auto;
   color: #ffffff;
   font-family: "DotGothic16", monospace;
   font-size: 11px;
@@ -36,15 +37,46 @@
   }
 }
 
+.settings-header {
+  position: relative;
+  border-bottom: 1px solid #333;
+  margin-bottom: 8px;
+  min-height: 22px;
+}
+
 .settings-title {
   font-size: 12px;
   font-weight: 700;
   color: #ffffff;
-  margin-bottom: 12px;
   text-transform: lowercase;
   text-align: center;
-  border-bottom: 1px solid #333;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
+}
+
+.settings-header .settings-title {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.settings-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 20px;
+  background: #111111;
+  border: 0;
+  color: #aaaaaa;
+  cursor: pointer;
+  font-family: "DotGothic16", monospace;
+  font-size: 11px;
+  line-height: 20px;
+  padding: 0;
+}
+
+.settings-close:hover {
+  background: #1c1c1c;
+  color: #ffffff;
 }
 
 .settings-list {
@@ -57,6 +89,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 8px 8px;
   cursor: pointer;
   user-select: none;
@@ -86,6 +119,13 @@
   font-size: 10px;
 }
 
+.settings-value {
+  color: #888;
+  font-size: 10px;
+  text-align: right;
+  max-width: 112px;
+}
+
 .arrow {
   color: #666;
   font-size: 9px;
@@ -98,4 +138,96 @@
   text-align: center;
   margin-top: 12px;
   text-transform: lowercase;
+}
+
+.personality-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+}
+
+.personality-result {
+  border-bottom: 1px solid #222;
+  padding-bottom: 6px;
+  text-align: center;
+}
+
+.personality-name {
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.personality-meta {
+  font-size: 10px;
+  color: #777;
+  margin-top: 2px;
+}
+
+.personality-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.personality-slider {
+  display: grid;
+  gap: 2px;
+}
+
+.slider-title {
+  color: #eeeeee;
+  font-size: 11px;
+}
+
+.personality-slider input {
+  width: 100%;
+  accent-color: #ffffff;
+  margin: 0;
+}
+
+.slider-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #777;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.slider-ends span:last-child {
+  text-align: right;
+}
+
+.personality-traits {
+  color: #aaa;
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  position: sticky;
+  bottom: 0;
+  background: #000000;
+  padding-top: 6px;
+}
+
+.settings-button {
+  background: #ffffff;
+  border: 0;
+  color: #000000;
+  cursor: pointer;
+  font-family: "DotGothic16", monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.settings-button.secondary {
+  background: #181818;
+  color: #ffffff;
 }

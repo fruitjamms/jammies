@@ -40,6 +40,17 @@ body,
     overflow: visible;
 }
 
+.buddy-shell--panel .buddy {
+    inset: auto auto var(--panel-anchor-bottom, 0px)
+        calc(var(--panel-anchor-x, 80px) - (var(--buddy-window-w, 160px) / 2));
+    width: var(--buddy-window-w, 160px);
+    height: var(--buddy-window-h, 256px);
+}
+
+.buddy-shell--opening-panel .buddy {
+    visibility: hidden;
+}
+
 .buddy-sprite-stack {
     position: relative;
     margin-bottom: calc(var(--buddy-sprite-px, 96px) * 14 / 128);
@@ -90,7 +101,7 @@ body,
 }
 
 .buddy.fx-wall {
-    animation: buddyBonkShake 0.22s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    animation: buddyBonkShake 0.14s ease-out both;
 }
 
 @keyframes buddyBonkShake {
@@ -98,13 +109,13 @@ body,
         transform: translateX(0);
     }
     25% {
-        transform: translateX(-5px);
+        transform: translateX(-2px);
     }
     50% {
-        transform: translateX(4px);
+        transform: translateX(2px);
     }
     75% {
-        transform: translateX(-2px);
+        transform: translateX(-1px);
     }
     100% {
         transform: translateX(0);

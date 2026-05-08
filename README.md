@@ -19,8 +19,16 @@ no two buddies are the same. same species, totally different personality dependi
 
 ### personality quiz
 - immediately after your egg hatches, a short quiz appears before your buddy "wakes up"
-- 3–5 questions using sliders (like tomodachi life)
-- answers determine your buddy's personality out of 16 personality types (maybe organized in quadrants)
+- 4 sliders with opposing values:
+  - keeps it in <-> puts it out (I/E)
+  - what's real <-> what could be (S/N)
+  - soft read <-> sharp read (F/T)
+  - loose <-> locked (J/P)
+- answers determine your buddy's personality out of 16 personality types, organized into:
+  - sharp: INTJ sharp strategist, INTP sharp eccentric, ENTJ sharp commander, ENTP sharp debater
+  - serene: INFJ serene visionary, INFP serene dreamer, ENFJ serene mentor, ENFP serene enthusiast
+  - steady: ISTJ steady realist, ISFJ steady nurturer, ESTJ steady manager, ESFJ steady socialite
+  - swift: ISTP swift operator, ISFP swift artist, ESTP swift risk-taker, ESFP swift entertainer
 
 ### activity watching
 buddy watches what apps and processes you have open and reacts accordingly
@@ -54,7 +62,9 @@ click on it x amount of times to hatch
      ↓
 egg cracks open → species revealed
      ↓
-personality quiz appears (3–5 questions)
+personality quiz appears (4 sliders)
+     ↓
+quiz result is saved locally and injected into the ollama system prompt
      ↓
 buddy wakes up with derived personality
      ↓

@@ -1,7 +1,12 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Sprite from "./Sprite";
 import SettingsModal from "./SettingsModal";
-import { BUDDY_SPRITE_SIZE } from "../../shared/buddyLayout.js";
+import PersonalityQuiz from "./PersonalityQuiz";
+import {
+  BUDDY_SPRITE_SIZE,
+  BUDDY_WINDOW_HEIGHT,
+  BUDDY_WINDOW_WIDTH,
+} from "../../shared/buddyLayout.js";
 
 function screenCoords(event) {
   let x = event.screenX;
@@ -33,17 +38,39 @@ function readPersistedHatched() {
   }
 }
 
+function readPersistedSettings() {
+  try {
+    return window.api?.getSettingsSync?.() ?? {};
+  } catch {
+    return {};
+  }
+}
+
 function App() {
   const persistedHatchedRef = useRef(null);
   if (persistedHatchedRef.current === null) {
     persistedHatchedRef.current = readPersistedHatched();
   }
   const initialHatched = persistedHatchedRef.current;
+  const persistedSettingsRef = useRef(null);
+  if (persistedSettingsRef.current === null) {
+    persistedSettingsRef.current = readPersistedSettings();
+  }
+  const initialSettings = persistedSettingsRef.current;
 
   const [commentary, setCommentary] = useState("");
   const [petting, setPetting] = useState(false);
   const [shellHatched, setShellHatched] = useState(initialHatched);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [personalityProfile, setPersonalityProfile] = useState(
+    initialSettings.personalityProfile ?? null,
+  );
+  const [personalityAnswers, setPersonalityAnswers] = useState(
+    initialSettings.personalityAnswers ?? null,
+  );
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [panelLayout, setPanelLayout] = useState(null);
+  const [panelOpening, setPanelOpening] = useState(false);
   const hatchedRef = useRef(initialHatched);
   const buddyRootRef = useRef(null);
   const spriteStackRef = useRef(null);
@@ -51,7 +78,8 @@ function App() {
   const hitboxRef = useRef(null);
   const dragPointerId = useRef(null);
   const draggingRef = useRef(false);
-  const settingsOpenRef = useRef(false);
+  const panelOpenRef = useRef(false);
+  const personalityProfileRef = useRef(initialSettings.personalityProfile ?? null);
 
   const modeRef = useRef("roaming");
   const spinDegRef = useRef(0);
@@ -91,11 +119,27 @@ function App() {
     hatchedRef.current = true;
     setShellHatched(true);
     window.api?.buddyHatched?.();
+    if (!personalityProfileRef.current) setQuizOpen(true);
   }, []);
 
   useLayoutEffect(() => {
     if (initialHatched) window.api?.buddyHatched?.();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    window.api?.getSettings?.().then((settings) => {
+      if (cancelled) return;
+      const profile = settings?.personalityProfile ?? null;
+      personalityProfileRef.current = profile;
+      setPersonalityProfile(profile);
+      setPersonalityAnswers(settings?.personalityAnswers ?? null);
+      if (initialHatched && !profile) setQuizOpen(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialHatched]);
 
   useEffect(() => {
     if (!window.api?.onSystemResume) return undefined;
@@ -113,10 +157,30 @@ function App() {
   }, []);
 
   useEffect(() => {
-    settingsOpenRef.current = settingsOpen;
-    if (settingsOpen) {
+    if (!window.api?.onPanelLayout) return undefined;
+    return window.api.onPanelLayout((layout) => {
+      setPanelLayout(layout && Number.isFinite(layout.x) ? layout : null);
+      if (layout) {
+        requestAnimationFrame(() => setPanelOpening(false));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!window.api?.onWindowBlur) return undefined;
+    return window.api.onWindowBlur(() => {
+      setSettingsOpen(false);
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    const panelOpen = settingsOpen || quizOpen;
+    panelOpenRef.current = panelOpen;
+    window.api?.setPanelOpen?.(panelOpen);
+
+    if (panelOpen) {
+      silenceCommentaryRef.current();
       window.api?.setIgnoreMouse?.(false);
-      window.api?.setStationary?.(true);
       return undefined;
     }
 
@@ -131,7 +195,16 @@ function App() {
       window.api?.setIgnoreMouse?.(true);
     }
     return undefined;
-  }, [settingsOpen, shellHatched]);
+  }, [settingsOpen, quizOpen, shellHatched]);
+
+  const handleQuizSave = useCallback((patch) => {
+    setPersonalityAnswers(patch.personalityAnswers);
+    personalityProfileRef.current = patch.personalityProfile;
+    setPersonalityProfile(patch.personalityProfile);
+    window.api?.updateSettings?.(patch);
+    setQuizOpen(false);
+    startCommentaryRef.current(`i am ${patch.personalityProfile.name}. noted.`);
+  }, []);
 
   silenceCommentaryRef.current = () => {
     if (commentaryClearTimerRef.current != null) {
@@ -230,7 +303,7 @@ function App() {
       rubPathAccumRef.current = 0;
     };
     const onLeave = () => {
-      if (!draggingRef.current && !settingsOpenRef.current) {
+      if (!draggingRef.current && !panelOpenRef.current) {
         window.api?.setIgnoreMouse?.(true);
       }
       rubHoverRef.current = false;
@@ -477,7 +550,7 @@ function App() {
       }
     }
     window.api?.sendDragEnd?.();
-    if (!settingsOpenRef.current && !rubHoverRef.current) {
+    if (!panelOpenRef.current && !rubHoverRef.current) {
       window.api?.setIgnoreMouse?.(true);
     }
   }
@@ -540,7 +613,8 @@ function App() {
     const onContextMenu = (e) => {
       if (!shellHatched) return;
       e.preventDefault();
-      window.api?.showSettingsMenu?.();
+      setPanelOpening(true);
+      window.api?.openSettings?.();
     };
 
     hb.addEventListener("pointerdown", onDown);
@@ -558,10 +632,21 @@ function App() {
     };
   }, [shellHatched, setPettingSynced]);
 
+  const panelIsOpen = settingsOpen || quizOpen;
+  const panelAnchored = panelIsOpen && panelLayout;
+
   return (
     <div
-      className={`buddy-shell ${shellHatched ? "buddy-shell--hatched" : "buddy-shell--egg"}`}
-      style={{ "--buddy-sprite-px": `${BUDDY_SPRITE_SIZE}px` }}
+      className={`buddy-shell ${shellHatched ? "buddy-shell--hatched" : "buddy-shell--egg"} ${
+        panelAnchored ? "buddy-shell--panel" : ""
+      } ${panelOpening ? "buddy-shell--opening-panel" : ""}`}
+      style={{
+        "--buddy-sprite-px": `${BUDDY_SPRITE_SIZE}px`,
+        "--buddy-window-w": `${BUDDY_WINDOW_WIDTH}px`,
+        "--buddy-window-h": `${BUDDY_WINDOW_HEIGHT}px`,
+        "--panel-anchor-x": `${panelLayout?.x ?? BUDDY_WINDOW_WIDTH / 2}px`,
+        "--panel-anchor-bottom": `${panelLayout?.bottom ?? 0}px`,
+      }}
     >
       <div ref={buddyRootRef} className="buddy">
         <div ref={spriteStackRef} className="buddy-sprite-stack">
@@ -570,17 +655,30 @@ function App() {
               <Sprite
                 name="octo"
                 skipEgg={shellHatched}
-                state={petting ? "pet" : commentary ? "talking" : "idle"}
+                state={petting ? "pet" : commentary && !panelIsOpen ? "talking" : "idle"}
                 onHatched={onBuddyHatched}
               />
             </div>
           </div>
         </div>
-        {commentary && <div className="buddy-commentary">{commentary}</div>}
+        {commentary && !panelIsOpen && <div className="buddy-commentary">{commentary}</div>}
         {shellHatched && (
           <div ref={hitboxRef} className="buddy-hitbox" aria-hidden="true" />
         )}
       </div>
+      {quizOpen && (
+        <div className="settings-modal-overlay personality-quiz-overlay">
+          <div className="settings-modal-content personality-quiz-content">
+            <PersonalityQuiz
+              initialAnswers={personalityAnswers}
+              title="who wakes up?"
+              saveLabel="wake buddy"
+              required
+              onSave={handleQuizSave}
+            />
+          </div>
+        </div>
+      )}
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

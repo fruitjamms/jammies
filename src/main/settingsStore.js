@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { app } from "electron";
 
 const defaults = {
-
   walkWhileTalking: false,
-
   buddyHatched: false,
+  personalityAnswers: null,
+  personalityProfile: null,
 };
 
 function settingsPath() {
@@ -31,5 +31,9 @@ export function writeSettings(patch) {
 }
 
 export function resetToEggSettings() {
-  return writeSettings({ buddyHatched: false });
+  return writeSettings({
+    buddyHatched: false,
+    personalityAnswers: null,
+    personalityProfile: null,
+  });
 }
